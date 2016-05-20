@@ -1,0 +1,6 @@
+RC4 in Assembly
+http://www.nayuki.io/page/rc4-cipher-in-x86-assembly
+https://youritguy.wordpress.com/2010/06/13/adler-32-and-rc4-in-inline-assembly/
+
+Hyperion
+https://www.exploit-db.com/docs/18849.pdf

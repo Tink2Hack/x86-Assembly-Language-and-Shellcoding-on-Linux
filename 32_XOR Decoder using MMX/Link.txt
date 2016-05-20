@@ -1,0 +1,1 @@
+http://skypher.com/wiki/index.php/Hacking/Shellcode/GetPC

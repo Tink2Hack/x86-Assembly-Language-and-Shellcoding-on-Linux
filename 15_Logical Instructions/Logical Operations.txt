@@ -1,0 +1,239 @@
+Logical Operations
+
+1.) Compile and link the program
+kan1shka9@dev:~/Desktop/AL/7$ ls
+compile.sh  Logical.nasm
+kan1shka9@dev:~/Desktop/AL/7$ ./compile.sh Logical
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/AL/7$ ls
+compile.sh  Logical  Logical.nasm  Logical.o
+
+2.) Single step through the instructions
+kan1shka9@dev:~/Desktop/AL/7$ gdb -q ./Logical
+Reading symbols from ./Logical...(no debugging symbols found)...done.
+(gdb) set disassembly-flavor intel
+(gdb) break _start
+Breakpoint 1 at 0x8048080
+(gdb) run
+Starting program: /home/kan1shka9/Desktop/AL/7/Logical
+
+Breakpoint 1, 0x08048080 in _start ()
+(gdb) disassemble
+Dump of assembler code for function _start:
+=> 0x08048080 <+0>:     mov    al,0x10
+   0x08048082 <+2>:     and    al,0x1
+   0x08048084 <+4>:     and    BYTE PTR ds:0x80490d0,0xaa
+   0x0804808b <+11>:    and    WORD PTR ds:0x80490d1,0x1122
+   0x08048094 <+20>:    mov    al,0x10
+   0x08048096 <+22>:    or     al,0x1
+   0x08048098 <+24>:    or     BYTE PTR ds:0x80490d0,0xaa
+   0x0804809f <+31>:    mov    eax,0x0
+   0x080480a4 <+36>:    or     eax,0x0
+   0x080480a7 <+39>:    xor    DWORD PTR ds:0x80490d3,0x11223344
+   0x080480b1 <+49>:    xor    DWORD PTR ds:0x80490d3,0x11223344
+   0x080480bb <+59>:    mov    eax,0xffffffff
+   0x080480c0 <+64>:    not    eax
+   0x080480c2 <+66>:    not    eax
+   0x080480c4 <+68>:    mov    eax,0x1
+   0x080480c9 <+73>:    mov    ebx,0xa
+   0x080480ce <+78>:    int    0x80
+End of assembler dump.
+(gdb) display/x $al
+1: /x $al = 0x0
+(gdb) display/x $eax
+2: /x $eax = 0x0
+(gdb) define hook-stop
+Type commands for definition of "hook-stop".
+End with a line saying just "end".
+>x/xb &var1
+>x/xh &var2
+>x/xw &var3
+>disassemble $eip,+10
+>end
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0xbbcc
+0x80490d3:      0x11223344
+Dump of assembler code from 0x8048082 to 0x804808c:
+=> 0x08048082 <_start+2>:       and    al,0x1
+   0x08048084 <_start+4>:       and    BYTE PTR ds:0x80490d0,0xaa
+   0x0804808b <_start+11>:      and    WORD PTR ds:0x80490d1,0x1122
+End of assembler dump.
+0x08048082 in _start ()
+2: /x $eax = 0x10
+1: /x $al = 0x10
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0xbbcc
+0x80490d3:      0x11223344
+Dump of assembler code from 0x8048084 to 0x804808e:
+=> 0x08048084 <_start+4>:       and    BYTE PTR ds:0x80490d0,0xaa
+   0x0804808b <_start+11>:      and    WORD PTR ds:0x80490d1,0x1122
+End of assembler dump.
+0x08048084 in _start ()
+2: /x $eax = 0x0
+1: /x $al = 0x0
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0xbbcc
+0x80490d3:      0x11223344
+Dump of assembler code from 0x804808b to 0x8048095:
+=> 0x0804808b <_start+11>:      and    WORD PTR ds:0x80490d1,0x1122
+   0x08048094 <_start+20>:      mov    al,0x10
+End of assembler dump.
+0x0804808b in _start ()
+2: /x $eax = 0x0
+1: /x $al = 0x0
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0x1100
+0x80490d3:      0x11223344
+Dump of assembler code from 0x8048094 to 0x804809e:
+=> 0x08048094 <_start+20>:      mov    al,0x10
+   0x08048096 <_start+22>:      or     al,0x1
+   0x08048098 <_start+24>:      or     BYTE PTR ds:0x80490d0,0xaa
+End of assembler dump.
+0x08048094 in _start ()
+2: /x $eax = 0x0
+1: /x $al = 0x0
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0x1100
+0x80490d3:      0x11223344
+Dump of assembler code from 0x8048096 to 0x80480a0:
+=> 0x08048096 <_start+22>:      or     al,0x1
+   0x08048098 <_start+24>:      or     BYTE PTR ds:0x80490d0,0xaa
+   0x0804809f <_start+31>:      mov    eax,0x0
+End of assembler dump.
+0x08048096 in _start ()
+2: /x $eax = 0x10
+1: /x $al = 0x10
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0x1100
+0x80490d3:      0x11223344
+Dump of assembler code from 0x8048098 to 0x80480a2:
+=> 0x08048098 <_start+24>:      or     BYTE PTR ds:0x80490d0,0xaa
+   0x0804809f <_start+31>:      mov    eax,0x0
+End of assembler dump.
+0x08048098 in _start ()
+2: /x $eax = 0x11
+1: /x $al = 0x11
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0x1100
+0x80490d3:      0x11223344
+Dump of assembler code from 0x804809f to 0x80480a9:
+=> 0x0804809f <_start+31>:      mov    eax,0x0
+   0x080480a4 <_start+36>:      or     eax,0x0
+   0x080480a7 <_start+39>:      xor    DWORD PTR ds:0x80490d3,0x11223344
+End of assembler dump.
+0x0804809f in _start ()
+2: /x $eax = 0x11
+1: /x $al = 0x11
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0x1100
+0x80490d3:      0x11223344
+Dump of assembler code from 0x80480a4 to 0x80480ae:
+=> 0x080480a4 <_start+36>:      or     eax,0x0
+   0x080480a7 <_start+39>:      xor    DWORD PTR ds:0x80490d3,0x11223344
+End of assembler dump.
+0x080480a4 in _start ()
+2: /x $eax = 0x0
+1: /x $al = 0x0
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0x1100
+0x80490d3:      0x11223344
+Dump of assembler code from 0x80480a7 to 0x80480b1:
+=> 0x080480a7 <_start+39>:      xor    DWORD PTR ds:0x80490d3,0x11223344
+End of assembler dump.
+0x080480a7 in _start ()
+2: /x $eax = 0x0
+1: /x $al = 0x0
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0x1100
+0x80490d3:      0x00000000
+Dump of assembler code from 0x80480b1 to 0x80480bb:
+=> 0x080480b1 <_start+49>:      xor    DWORD PTR ds:0x80490d3,0x11223344
+End of assembler dump.
+0x080480b1 in _start ()
+2: /x $eax = 0x0
+1: /x $al = 0x0
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0x1100
+0x80490d3:      0x11223344
+Dump of assembler code from 0x80480bb to 0x80480c5:
+=> 0x080480bb <_start+59>:      mov    eax,0xffffffff
+   0x080480c0 <_start+64>:      not    eax
+   0x080480c2 <_start+66>:      not    eax
+   0x080480c4 <_start+68>:      mov    eax,0x1
+End of assembler dump.
+0x080480bb in _start ()
+2: /x $eax = 0x0
+1: /x $al = 0x0
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0x1100
+0x80490d3:      0x11223344
+Dump of assembler code from 0x80480c0 to 0x80480ca:
+=> 0x080480c0 <_start+64>:      not    eax
+   0x080480c2 <_start+66>:      not    eax
+   0x080480c4 <_start+68>:      mov    eax,0x1
+   0x080480c9 <_start+73>:      mov    ebx,0xa
+End of assembler dump.
+0x080480c0 in _start ()
+2: /x $eax = 0xffffffff
+1: /x $al = 0xff
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0x1100
+0x80490d3:      0x11223344
+Dump of assembler code from 0x80480c2 to 0x80480cc:
+=> 0x080480c2 <_start+66>:      not    eax
+   0x080480c4 <_start+68>:      mov    eax,0x1
+   0x080480c9 <_start+73>:      mov    ebx,0xa
+End of assembler dump.
+0x080480c2 in _start ()
+2: /x $eax = 0x0
+1: /x $al = 0x0
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0x1100
+0x80490d3:      0x11223344
+Dump of assembler code from 0x80480c4 to 0x80480ce:
+=> 0x080480c4 <_start+68>:      mov    eax,0x1
+   0x080480c9 <_start+73>:      mov    ebx,0xa
+End of assembler dump.
+0x080480c4 in _start ()
+2: /x $eax = 0xffffffff
+1: /x $al = 0xff
+(gdb) nexti
+0x80490d0:      0xaa
+0x80490d1:      0x1100
+0x80490d3:      0x11223344
+Dump of assembler code from 0x80480c9 to 0x80480d3:
+=> 0x080480c9 <_start+73>:      mov    ebx,0xa
+   0x080480ce <_start+78>:      int    0x80
+   0x080480d0:  stos   BYTE PTR es:[edi],al
+   0x080480d1:  int3
+   0x080480d2:  mov    ebx,0x11223344
+End of assembler dump.
+0x080480c9 in _start ()
+2: /x $eax = 0x1
+1: /x $al = 0x1
+(gdb) c
+Continuing.
+[Inferior 1 (process 7651) exited with code 012]
+0x80490d0:      0xaa
+0x80490d1:      0xbbcc
+0x80490d3:      0x11223344
+Error while running hook_stop:
+No registers.
+(gdb) q
+kan1shka9@dev:~/Desktop/AL/7$

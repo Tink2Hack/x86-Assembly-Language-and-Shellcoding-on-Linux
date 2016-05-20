@@ -1,0 +1,4 @@
+sudo apt-get install nasm build-essential
+
+To install SSH and search for the package in which SSH is present
+sudo apt-cache search sshd

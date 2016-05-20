@@ -1,0 +1,500 @@
+Arithmetic operations
+
+1.) Compile and link
+kan1shka9@dev:~/Desktop/AL/5$ ./compile.sh Arithmetic
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/AL/5$ ls
+Arithmetic  Arithmetic.nasm  Arithmetic.o  compile.sh
+
+2.) Single Step
+kan1shka9@dev:~/Desktop/AL/5$ gdb -q ./Arithmetic
+Reading symbols from ./Arithmetic...(no debugging symbols found)...done.
+(gdb) set disassembly-flavor intel
+(gdb) break _start
+Breakpoint 1 at 0x8048080
+(gdb) run
+Starting program: /home/kan1shka9/Desktop/AL/5/Arithmetic
+
+Breakpoint 1, 0x08048080 in _start ()
+(gdb) disassemble
+Dump of assembler code for function _start:
+=> 0x08048080 <+0>:     mov    eax,0x0
+   0x08048085 <+5>:     add    al,0x22
+   0x08048087 <+7>:     add    al,0x11
+   0x08048089 <+9>:     mov    ax,0x1122
+   0x0804808d <+13>:    add    ax,0x3344
+   0x08048091 <+17>:    mov    eax,0xffffffff
+   0x08048096 <+22>:    add    eax,0x10
+   0x08048099 <+25>:    mov    eax,0x0
+   0x0804809e <+30>:    add    BYTE PTR ds:0x8049100,0x22
+   0x080480a5 <+37>:    add    BYTE PTR ds:0x8049100,0x11
+   0x080480ac <+44>:    add    WORD PTR ds:0x8049101,0x1122
+   0x080480b5 <+53>:    add    WORD PTR ds:0x8049101,0x3344
+   0x080480be <+62>:    mov    DWORD PTR ds:0x8049103,0xffffffff
+   0x080480c8 <+72>:    add    DWORD PTR ds:0x8049103,0x10
+   0x080480cf <+79>:    clc
+   0x080480d0 <+80>:    stc
+   0x080480d1 <+81>:    cmc
+   0x080480d2 <+82>:    mov    eax,0x0
+   0x080480d7 <+87>:    stc
+   0x080480d8 <+88>:    adc    al,0x22
+   0x080480da <+90>:    stc
+   0x080480db <+91>:    adc    al,0x11
+   0x080480dd <+93>:    mov    ax,0x1122
+   0x080480e1 <+97>:    stc
+   0x080480e2 <+98>:    adc    eax,0x10
+   0x080480e5 <+101>:   mov    eax,0xa
+   0x080480ea <+106>:   sub    eax,0x5
+   0x080480ed <+109>:   stc
+   0x080480ee <+110>:   sbb    eax,0x4
+   0x080480f1 <+113>:   inc    eax
+   0x080480f2 <+114>:   dec    eax
+   0x080480f3 <+115>:   mov    eax,0x1
+   0x080480f8 <+120>:   mov    ebx,0xa
+   0x080480fd <+125>:   int    0x80
+End of assembler dump.
+(gdb) info variables
+All defined variables:
+
+Non-debugging symbols:
+0x08049100  var1
+0x08049101  var2
+0x08049103  var3
+0x08049107  __bss_start
+0x08049107  _edata
+0x08049108  _end
+(gdb) define hook-stop
+Type commands for definition of "hook-stop".
+End with a line saying just "end".
+>print/x $eax
+>x/xb &var1
+>x/xh &var2
+>x/xw &var3
+>print $eflags
+>disassemble $eip,+10
+>end
+(gdb) nexti
+$1 = 0x0
+0x8049100:      0x00
+0x8049101:      0x0000
+0x8049103:      0x00000000
+$2 = [ IF ]
+Dump of assembler code from 0x8048085 to 0x804808f:
+=> 0x08048085 <_start+5>:       add    al,0x22
+   0x08048087 <_start+7>:       add    al,0x11
+   0x08048089 <_start+9>:       mov    ax,0x1122
+   0x0804808d <_start+13>:      add    ax,0x3344
+End of assembler dump.
+0x08048085 in _start ()
+(gdb) nexti
+$3 = 0x22
+0x8049100:      0x00
+0x8049101:      0x0000
+0x8049103:      0x00000000
+$4 = [ PF IF ]
+Dump of assembler code from 0x8048087 to 0x8048091:
+=> 0x08048087 <_start+7>:       add    al,0x11
+   0x08048089 <_start+9>:       mov    ax,0x1122
+   0x0804808d <_start+13>:      add    ax,0x3344
+End of assembler dump.
+0x08048087 in _start ()
+(gdb) nexti
+$5 = 0x33
+0x8049100:      0x00
+0x8049101:      0x0000
+0x8049103:      0x00000000
+$6 = [ PF IF ]
+Dump of assembler code from 0x8048089 to 0x8048093:
+=> 0x08048089 <_start+9>:       mov    ax,0x1122
+   0x0804808d <_start+13>:      add    ax,0x3344
+   0x08048091 <_start+17>:      mov    eax,0xffffffff
+End of assembler dump.
+0x08048089 in _start ()
+(gdb) nexti
+$7 = 0x1122
+0x8049100:      0x00
+0x8049101:      0x0000
+0x8049103:      0x00000000
+$8 = [ PF IF ]
+Dump of assembler code from 0x804808d to 0x8048097:
+=> 0x0804808d <_start+13>:      add    ax,0x3344
+   0x08048091 <_start+17>:      mov    eax,0xffffffff
+   0x08048096 <_start+22>:      add    eax,0x10
+End of assembler dump.
+0x0804808d in _start ()
+(gdb) nexti
+$9 = 0x4466
+0x8049100:      0x00
+0x8049101:      0x0000
+0x8049103:      0x00000000
+$10 = [ PF IF ]
+Dump of assembler code from 0x8048091 to 0x804809b:
+=> 0x08048091 <_start+17>:      mov    eax,0xffffffff
+   0x08048096 <_start+22>:      add    eax,0x10
+   0x08048099 <_start+25>:      mov    eax,0x0
+End of assembler dump.
+0x08048091 in _start ()
+(gdb) nexti
+$11 = 0xffffffff
+0x8049100:      0x00
+0x8049101:      0x0000
+0x8049103:      0x00000000
+$12 = [ PF IF ]
+Dump of assembler code from 0x8048096 to 0x80480a0:
+=> 0x08048096 <_start+22>:      add    eax,0x10
+   0x08048099 <_start+25>:      mov    eax,0x0
+   0x0804809e <_start+30>:      add    BYTE PTR ds:0x8049100,0x22
+End of assembler dump.
+0x08048096 in _start ()
+(gdb) nexti
+$13 = 0xf
+0x8049100:      0x00
+0x8049101:      0x0000
+0x8049103:      0x00000000
+$14 = [ CF PF IF ]
+Dump of assembler code from 0x8048099 to 0x80480a3:
+=> 0x08048099 <_start+25>:      mov    eax,0x0
+   0x0804809e <_start+30>:      add    BYTE PTR ds:0x8049100,0x22
+End of assembler dump.
+0x08048099 in _start ()
+(gdb) nexti
+$15 = 0x0
+0x8049100:      0x00
+0x8049101:      0x0000
+0x8049103:      0x00000000
+$16 = [ CF PF IF ]
+Dump of assembler code from 0x804809e to 0x80480a8:
+=> 0x0804809e <_start+30>:      add    BYTE PTR ds:0x8049100,0x22
+   0x080480a5 <_start+37>:      add    BYTE PTR ds:0x8049100,0x11
+End of assembler dump.
+0x0804809e in _start ()
+(gdb) nexti
+$17 = 0x0
+0x8049100:      0x22
+0x8049101:      0x0000
+0x8049103:      0x00000000
+$18 = [ PF IF ]
+Dump of assembler code from 0x80480a5 to 0x80480af:
+=> 0x080480a5 <_start+37>:      add    BYTE PTR ds:0x8049100,0x11
+   0x080480ac <_start+44>:      add    WORD PTR ds:0x8049101,0x1122
+End of assembler dump.
+0x080480a5 in _start ()
+(gdb) nexti
+$19 = 0x0
+0x8049100:      0x33
+0x8049101:      0x0000
+0x8049103:      0x00000000
+$20 = [ PF IF ]
+Dump of assembler code from 0x80480ac to 0x80480b6:
+=> 0x080480ac <_start+44>:      add    WORD PTR ds:0x8049101,0x1122
+   0x080480b5 <_start+53>:      add    WORD PTR ds:0x8049101,0x3344
+End of assembler dump.
+0x080480ac in _start ()
+(gdb) nexti
+$21 = 0x0
+0x8049100:      0x33
+0x8049101:      0x1122
+0x8049103:      0x00000000
+$22 = [ PF IF ]
+Dump of assembler code from 0x80480b5 to 0x80480bf:
+=> 0x080480b5 <_start+53>:      add    WORD PTR ds:0x8049101,0x3344
+   0x080480be <_start+62>:      mov    DWORD PTR ds:0x8049103,0xffffffff
+End of assembler dump.
+0x080480b5 in _start ()
+(gdb) nexti
+$23 = 0x0
+0x8049100:      0x33
+0x8049101:      0x4466
+0x8049103:      0x00000000
+$24 = [ PF IF ]
+Dump of assembler code from 0x80480be to 0x80480c8:
+=> 0x080480be <_start+62>:      mov    DWORD PTR ds:0x8049103,0xffffffff
+End of assembler dump.
+0x080480be in _start ()
+(gdb) nexti
+$25 = 0x0
+0x8049100:      0x33
+0x8049101:      0x4466
+0x8049103:      0xffffffff
+$26 = [ PF IF ]
+Dump of assembler code from 0x80480c8 to 0x80480d2:
+=> 0x080480c8 <_start+72>:      add    DWORD PTR ds:0x8049103,0x10
+   0x080480cf <_start+79>:      clc
+   0x080480d0 <_start+80>:      stc
+   0x080480d1 <_start+81>:      cmc
+End of assembler dump.
+0x080480c8 in _start ()
+(gdb) nexti
+$27 = 0x0
+0x8049100:      0x33
+0x8049101:      0x4466
+0x8049103:      0x0000000f
+$28 = [ CF PF IF ]
+Dump of assembler code from 0x80480cf to 0x80480d9:
+=> 0x080480cf <_start+79>:      clc
+   0x080480d0 <_start+80>:      stc
+   0x080480d1 <_start+81>:      cmc
+   0x080480d2 <_start+82>:      mov    eax,0x0
+   0x080480d7 <_start+87>:      stc
+   0x080480d8 <_start+88>:      adc    al,0x22
+End of assembler dump.
+0x080480cf in _start ()
+(gdb) nexti
+$29 = 0x0
+0x8049100:      0x33
+0x8049101:      0x4466
+0x8049103:      0x0000000f
+$30 = [ PF IF ]
+Dump of assembler code from 0x80480d0 to 0x80480da:
+=> 0x080480d0 <_start+80>:      stc
+   0x080480d1 <_start+81>:      cmc
+   0x080480d2 <_start+82>:      mov    eax,0x0
+   0x080480d7 <_start+87>:      stc
+   0x080480d8 <_start+88>:      adc    al,0x22
+End of assembler dump.
+0x080480d0 in _start ()
+(gdb) nexti
+$31 = 0x0
+0x8049100:      0x33
+0x8049101:      0x4466
+0x8049103:      0x0000000f
+$32 = [ CF PF IF ]
+Dump of assembler code from 0x80480d1 to 0x80480db:
+=> 0x080480d1 <_start+81>:      cmc
+   0x080480d2 <_start+82>:      mov    eax,0x0
+   0x080480d7 <_start+87>:      stc
+   0x080480d8 <_start+88>:      adc    al,0x22
+   0x080480da <_start+90>:      stc
+End of assembler dump.
+0x080480d1 in _start ()
+(gdb) nexti
+$33 = 0x0
+0x8049100:      0x33
+0x8049101:      0x4466
+0x8049103:      0x0000000f
+$34 = [ PF IF ]
+Dump of assembler code from 0x80480d2 to 0x80480dc:
+=> 0x080480d2 <_start+82>:      mov    eax,0x0
+   0x080480d7 <_start+87>:      stc
+   0x080480d8 <_start+88>:      adc    al,0x22
+   0x080480da <_start+90>:      stc
+   0x080480db <_start+91>:      adc    al,0x11
+End of assembler dump.
+0x080480d2 in _start ()
+(gdb) nexti
+$35 = 0x0
+0x8049100:      0x33
+0x8049101:      0x4466
+0x8049103:      0x0000000f
+$36 = [ PF IF ]
+Dump of assembler code from 0x80480d7 to 0x80480e1:
+=> 0x080480d7 <_start+87>:      stc
+   0x080480d8 <_start+88>:      adc    al,0x22
+   0x080480da <_start+90>:      stc
+   0x080480db <_start+91>:      adc    al,0x11
+   0x080480dd <_start+93>:      mov    ax,0x1122
+End of assembler dump.
+0x080480d7 in _start ()
+(gdb) nexti
+$37 = 0x0
+0x8049100:      0x33
+0x8049101:      0x4466
+0x8049103:      0x0000000f
+$38 = [ CF PF IF ]
+Dump of assembler code from 0x80480d8 to 0x80480e2:
+=> 0x080480d8 <_start+88>:      adc    al,0x22
+   0x080480da <_start+90>:      stc
+   0x080480db <_start+91>:      adc    al,0x11
+   0x080480dd <_start+93>:      mov    ax,0x1122
+   0x080480e1 <_start+97>:      stc
+End of assembler dump.
+0x080480d8 in _start ()
+(gdb) nexti
+$39 = 0x23
+0x8049100:      0x33
+0x8049101:      0x4466
+0x8049103:      0x0000000f
+$40 = [ IF ]
+Dump of assembler code from 0x80480da to 0x80480e4:
+=> 0x080480da <_start+90>:      stc
+   0x080480db <_start+91>:      adc    al,0x11
+   0x080480dd <_start+93>:      mov    ax,0x1122
+   0x080480e1 <_start+97>:      stc
+   0x080480e2 <_start+98>:      adc    eax,0x10
+End of assembler dump.
+0x080480da in _start ()
+(gdb) nexti
+$41 = 0x23
+0x8049100:      0x33
+0x8049101:      0x4466
+0x8049103:      0x0000000f
+$42 = [ CF IF ]
+Dump of assembler code from 0x80480db to 0x80480e5:
+=> 0x080480db <_start+91>:      adc    al,0x11
+   0x080480dd <_start+93>:      mov    ax,0x1122
+   0x080480e1 <_start+97>:      stc
+   0x080480e2 <_start+98>:      adc    eax,0x10
+End of assembler dump.
+0x080480db in _start ()
+(gdb) nexti
+$43 = 0x35
+0x8049100:      0x33
+0x8049101:      0x4466
+0x8049103:      0x0000000f
+$44 = [ PF IF ]
+Dump of assembler code from 0x80480dd to 0x80480e7:
+=> 0x080480dd <_start+93>:      mov    ax,0x1122
+   0x080480e1 <_start+97>:      stc
+   0x080480e2 <_start+98>:      adc    eax,0x10
+   0x080480e5 <_start+101>:     mov    eax,0xa
+End of assembler dump.
+0x080480dd in _start ()
+(gdb) nexti
+$45 = 0x1122
+0x8049108:      0x33
+0x8049109:      0x4466
+0x804910b:      0x0000000f
+$46 = [ CF PF IF ]
+Dump of assembler code from 0x80480e2 to 0x80480ec:
+=> 0x080480e2 <_start+98>:      adc    eax,0x10
+   0x080480e5 <_start+101>:     mov    eax,0xffffffff
+   0x080480ea <_start+106>:     stc
+   0x080480eb <_start+107>:     adc    eax,0x10
+End of assembler dump.
+0x080480e2 in _start ()
+(gdb) nexti
+$47 = 0x1133
+0x8049108:      0x33
+0x8049109:      0x4466
+0x804910b:      0x0000000f
+$48 = [ PF IF ]
+Dump of assembler code from 0x80480e5 to 0x80480ef:
+=> 0x080480e5 <_start+101>:     mov    eax,0xffffffff
+   0x080480ea <_start+106>:     stc
+   0x080480eb <_start+107>:     adc    eax,0x10
+   0x080480ee <_start+110>:     mov    eax,0xa
+End of assembler dump.
+0x080480e5 in _start ()
+(gdb) nexti
+$49 = 0xffffffff
+0x8049108:      0x33
+0x8049109:      0x4466
+0x804910b:      0x0000000f
+$50 = [ PF IF ]
+Dump of assembler code from 0x80480ea to 0x80480f4:
+=> 0x080480ea <_start+106>:     stc
+   0x080480eb <_start+107>:     adc    eax,0x10
+   0x080480ee <_start+110>:     mov    eax,0xa
+   0x080480f3 <_start+115>:     sub    eax,0x5
+End of assembler dump.
+0x080480ea in _start ()
+(gdb) nexti
+$51 = 0xffffffff
+0x8049108:      0x33
+0x8049109:      0x4466
+0x804910b:      0x0000000f
+$52 = [ CF PF IF ]
+Dump of assembler code from 0x80480eb to 0x80480f5:
+=> 0x080480eb <_start+107>:     adc    eax,0x10
+   0x080480ee <_start+110>:     mov    eax,0xa
+   0x080480f3 <_start+115>:     sub    eax,0x5
+End of assembler dump.
+0x080480eb in _start ()
+(gdb) nexti
+$53 = 0x10
+0x8049108:      0x33
+0x8049109:      0x4466
+0x804910b:      0x0000000f
+$54 = [ CF AF IF ]
+Dump of assembler code from 0x80480ee to 0x80480f8:
+=> 0x080480ee <_start+110>:     mov    eax,0xa
+   0x080480f3 <_start+115>:     sub    eax,0x5
+   0x080480f6 <_start+118>:     stc
+   0x080480f7 <_start+119>:     sbb    eax,0x4
+End of assembler dump.
+0x080480ee in _start ()
+(gdb) nexti
+$55 = 0xa
+0x8049108:      0x33
+0x8049109:      0x4466
+0x804910b:      0x0000000f
+$56 = [ CF AF IF ]
+Dump of assembler code from 0x80480f3 to 0x80480fd:
+=> 0x080480f3 <_start+115>:     sub    eax,0x5
+   0x080480f6 <_start+118>:     stc
+   0x080480f7 <_start+119>:     sbb    eax,0x4
+   0x080480fa <_start+122>:     inc    eax
+   0x080480fb <_start+123>:     dec    eax
+   0x080480fc <_start+124>:     mov    eax,0x1
+End of assembler dump.
+0x080480f3 in _start ()
+(gdb) nexti
+$57 = 0x5
+0x8049108:      0x33
+0x8049109:      0x4466
+0x804910b:      0x0000000f
+$58 = [ PF IF ]
+Dump of assembler code from 0x80480f6 to 0x8048100:
+=> 0x080480f6 <_start+118>:     stc
+   0x080480f7 <_start+119>:     sbb    eax,0x4
+   0x080480fa <_start+122>:     inc    eax
+   0x080480fb <_start+123>:     dec    eax
+   0x080480fc <_start+124>:     mov    eax,0x1
+End of assembler dump.
+0x080480f6 in _start ()
+(gdb) nexti
+$59 = 0x5
+0x8049108:      0x33
+0x8049109:      0x4466
+0x804910b:      0x0000000f
+$60 = [ CF PF IF ]
+Dump of assembler code from 0x80480f7 to 0x8048101:
+=> 0x080480f7 <_start+119>:     sbb    eax,0x4
+   0x080480fa <_start+122>:     inc    eax
+   0x080480fb <_start+123>:     dec    eax
+   0x080480fc <_start+124>:     mov    eax,0x1
+End of assembler dump.
+0x080480f7 in _start ()
+(gdb) nexti
+$61 = 0x0
+0x8049108:      0x33
+0x8049109:      0x4466
+0x804910b:      0x0000000f
+$62 = [ PF ZF IF ]
+Dump of assembler code from 0x80480fa to 0x8048104:
+=> 0x080480fa <_start+122>:     inc    eax
+   0x080480fb <_start+123>:     dec    eax
+   0x080480fc <_start+124>:     mov    eax,0x1
+   0x08048101 <_start+129>:     mov    ebx,0xa
+End of assembler dump.
+0x080480fa in _start ()
+(gdb) nexti
+$63 = 0x1
+0x8049108:      0x33
+0x8049109:      0x4466
+0x804910b:      0x0000000f
+$64 = [ IF ]
+Dump of assembler code from 0x80480fb to 0x8048105:
+=> 0x080480fb <_start+123>:     dec    eax
+   0x080480fc <_start+124>:     mov    eax,0x1
+   0x08048101 <_start+129>:     mov    ebx,0xa
+End of assembler dump.
+0x080480fb in _start ()
+(gdb) nexti
+$65 = 0x0
+0x8049108:      0x33
+0x8049109:      0x4466
+0x804910b:      0x0000000f
+$66 = [ PF ZF IF ]
+Dump of assembler code from 0x80480fc to 0x8048106:
+=> 0x080480fc <_start+124>:     mov    eax,0x1
+   0x08048101 <_start+129>:     mov    ebx,0xa
+End of assembler dump.
+0x080480fc in _start ()
+(gdb) c
+Continuing.
+[Inferior 1 (process 6053) exited with code 012]
+Error while running hook_stop:
+No registers.

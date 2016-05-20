@@ -1,0 +1,88 @@
+Exit Shellcode
+
+1.) Compile and link and run
+kan1shka9@dev:~/Desktop/AL/15$ ls
+compile.sh  Exit  Exit.nasm  Exit.o
+kan1shka9@dev:~/Desktop/AL/15$ ./Exit
+kan1shka9@dev:~/Desktop/AL/15$
+
+2.) Reading the text segment
+Objdump command in Linux is used to provide thorough information on object files.
+kan1shka9@dev:~/Desktop/AL/15$ objdump -d Exit
+
+Exit:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048060 <_start>:
+ 8048060:       b8 01 00 00 00          mov    $0x1,%eax
+ 8048065:       bb 0a 00 00 00          mov    $0xa,%ebx
+ 804806a:       cd 80                   int    $0x80
+kan1shka9@dev:~/Desktop/AL/15$ objdump -d Exit -M intel
+
+Exit:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048060 <_start>:
+ 8048060:       b8 01 00 00 00          mov    eax,0x1
+ 8048065:       bb 0a 00 00 00          mov    ebx,0xa
+ 804806a:       cd 80                   int    0x80
+
+3.) Compile and run
+kan1shka9@dev:~/Desktop/AL/15$ ls
+compile.sh  Exit  Exit.nasm  Exit.o  shellcode.c
+kan1shka9@dev:~/Desktop/AL/15$ gcc -fno-stack-protector -z execstack shellcode.c -o shellcode
+kan1shka9@dev:~/Desktop/AL/15$ ls
+compile.sh  Exit  Exit.nasm  Exit.o  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/AL/15$ ./shellcode
+Shellcode length: 2
+kan1shka9@dev:~/Desktop/AL/15$ echo $?
+10
+
+4.) After removing null bytes compile and link it. Then check for null bytes using objdump
+kan1shka9@dev:~/Desktop/AL/15$ ls
+compile.sh  Exit  Exit.nasm  exit-no-null.nasm  Exit.o  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/AL/15$ ./compile.sh exit-no-null
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/AL/15$ ls
+compile.sh  Exit  Exit.nasm  exit-no-null  exit-no-null.nasm  exit-no-null.o  Exit.o  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/AL/15$ objdump -d exit-no-null -M intel
+
+exit-no-null:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048060 <_start>:
+ 8048060:       31 c0                   xor    eax,eax
+ 8048062:       b0 01                   mov    al,0x1
+ 8048064:       31 db                   xor    ebx,ebx
+ 8048066:       b3 0a                   mov    bl,0xa
+ 8048068:       cd 80                   int    0x80
+
+5.) Get all shellcode on binary file from objdump (Transfer the objdump output into the shellcode file)
+http://www.commandlinefu.com/commands/view/6051/get-all-shellcode-on-binary-file-from-objdump
+objdump -d ./PROGRAM|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+kan1shka9@dev:~/Desktop/AL/15$ objdump -d ./exit-no-null|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\xb0\x01\x31\xdb\xb3\x0a\xcd\x80"
+kan1shka9@dev:~/Desktop/AL/15$ ls
+compile.sh  Exit  Exit.nasm  exit-no-null  exit-no-null.nasm  exit-no-null.o  Exit.o  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/AL/15$ gcc -fno-stack-protector -z execstack shellcode.c -o shellcode
+kan1shka9@dev:~/Desktop/AL/15$ ./shellcode
+Shellcode length: 10
+kan1shka9@dev:~/Desktop/AL/15$ echo $?
+10
+
+6.) After removing the return value to make it compact
+kan1shka9@dev:~/Desktop/AL/15$ ./compile.sh exit-no-null
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/AL/15$ objdump -d ./exit-no-null|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\xb0\x01\x31\xdb\xcd\x80"
+kan1shka9@dev:~/Desktop/AL/15$

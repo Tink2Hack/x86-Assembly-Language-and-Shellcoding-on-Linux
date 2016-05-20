@@ -1,0 +1,262 @@
+1.) Inspect the General Purpose, Segment, EFLAGS, FPU, MMX, XMM etc. registers on your Ubuntu system.
+
+1.) Inspect the General Purpose, Segment, EFLAGS
+kan1shka9@dev:~$ gdb -q /bin/bash
+Reading symbols from /bin/bash...(no debugging symbols found)...done.
+(gdb) break main
+Breakpoint 1 at 0x8061546
+(gdb) run
+Starting program: /bin/bash
+
+Breakpoint 1, 0x08061546 in main ()
+(gdb) info registers
+eax            0x1      1
+ecx            0xe2164865       -501856155
+edx            0xbffff704       -1073744124
+ebx            0xb7f99000       -1208381440
+esp            0xbffff6cc       0xbffff6cc
+ebp            0xbffff6d8       0xbffff6d8
+esi            0x0      0
+edi            0x0      0
+eip            0x8061546        0x8061546 <main+6>
+eflags         0x246    [ PF ZF IF ]
+cs             0x73     115
+ss             0x7b     123
+ds             0x7b     123
+es             0x7b     123
+fs             0x0      0
+gs             0x33     51
+(gdb) display /x $eax
+1: /x $eax = 0x1
+(gdb) display /x $ax
+2: /x $ax = 0x1
+(gdb) display /x $ecx
+3: /x $ecx = 0xe2164865
+(gdb) display /x $cx
+4: /x $cx = 0x4865
+(gdb) display /x $ch
+5: /x $ch = 0x48
+(gdb) display /x $cl
+6: /x $cl = 0x65
+(gdb) display /x $esp
+7: /x $esp = 0xbffff6cc
+(gdb) display /x $sp
+8: /x $sp = 0xbffff6cc
+
+2.) Disassemble from EIP
+(gdb) disassemble $eip
+Dump of assembler code for function main:
+   0x08061540 <+0>:     push   %ebp
+   0x08061541 <+1>:     mov    %esp,%ebp
+   0x08061543 <+3>:     push   %edi
+   0x08061544 <+4>:     push   %esi
+   0x08061545 <+5>:     push   %ebx
+=> 0x08061546 <+6>:     and    $0xfffffff0,%esp
+   0x08061549 <+9>:     sub    $0x110,%esp
+   0x0806154f <+15>:    mov    0xc(%ebp),%eax
+   0x08061552 <+18>:    movl   $0x0,0x4(%esp)
+   0x0806155a <+26>:    movl   $0x813e4c0,(%esp)
+   0x08061561 <+33>:    mov    %eax,0x48(%esp)
+   0x08061565 <+37>:    mov    0x10(%ebp),%eax
+   0x08061568 <+40>:    mov    %eax,0x34(%esp)
+   0x0806156c <+44>:    mov    %gs:0x14,%eax
+   0x08061572 <+50>:    mov    %eax,0x10c(%esp)
+   0x08061579 <+57>:    xor    %eax,%eax
+   0x0806157b <+59>:    call   0x8060920 <__sigsetjmp@plt>
+   0x08061580 <+64>:    test   %eax,%eax
+   0x08061582 <+66>:    jne    0x8061b01 <main+1473>
+   0x08061588 <+72>:    call   0x8073870 <xtrace_init>
+   0x0806158d <+77>:    lea    0x0(%esi),%esi
+   0x08061590 <+80>:    call   0x80707b0 <check_dev_tty>
+   0x08061595 <+85>:    cmpl   $0x0,0x813994c
+   0x0806159c <+92>:    je     0x80615b6 <main+118>
+   0x0806159e <+94>:    xchg   %ax,%ax
+   0x080615a0 <+96>:    movl   $0x3,(%esp)
+   0x080615a7 <+103>:   call   0x8060230 <sleep@plt>
+   0x080615ac <+108>:   mov    0x813994c,%edx
+   0x080615b2 <+114>:   test   %edx,%edx
+   0x080615b4 <+116>:   jne    0x80615a0 <main+96>
+   0x080615b6 <+118>:   call   0x80b2cd0 <set_default_locale>
+   0x080615bb <+123>:   call   0x8060300 <getuid@plt>
+   0x080615c0 <+128>:   cmp    0x8135378,%eax
+   0x080615c6 <+134>:   mov    %eax,%ebx
+   0x080615c8 <+136>:   je     0x806164f <main+271>
+   0x080615ce <+142>:   mov    0x8135388,%eax
+   0x080615d3 <+147>:   test   %eax,%eax
+   0x080615d5 <+149>:   je     0x80615ef <main+175>
+   0x080615d7 <+151>:   movl   $0x4bb,0x8(%esp)
+   0x080615df <+159>:   movl   $0x80fce4c,0x4(%esp)
+   0x080615e7 <+167>:   mov    %eax,(%esp)
+   0x080615ea <+170>:   call   0x80b9660 <sh_xfree>
+   0x080615ef <+175>:   mov    0x813538c,%eax
+   0x080615f4 <+180>:   test   %eax,%eax
+   0x080615f6 <+182>:   je     0x8061610 <main+208>
+   0x080615f8 <+184>:   movl   $0x4bc,0x8(%esp)
+   0x08061600 <+192>:   movl   $0x80fce4c,0x4(%esp)
+   0x08061608 <+200>:   mov    %eax,(%esp)
+   0x0806160b <+203>:   call   0x80b9660 <sh_xfree>
+   0x08061610 <+208>:   mov    0x8135390,%eax
+   0x08061615 <+213>:   test   %eax,%eax
+   0x08061617 <+215>:   je     0x8061631 <main+241>
+   0x08061619 <+217>:   movl   $0x4bd,0x8(%esp)
+   0x08061621 <+225>:   movl   $0x80fce4c,0x4(%esp)
+   0x08061629 <+233>:   mov    %eax,(%esp)
+   0x0806162c <+236>:   call   0x80b9660 <sh_xfree>
+   0x08061631 <+241>:   movl   $0x0,0x8135390
+   0x0806163b <+251>:   movl   $0x0,0x813538c
+   0x08061645 <+261>:   movl   $0x0,0x8135388
+   0x0806164f <+271>:   mov    %ebx,0x8135378
+
+   
+3.) Inspect the FPU, MMX, XMM etc. registers  
+(gdb) info all-registers
+eax            0x1      1
+ecx            0xe2164865       -501856155
+edx            0xbffff704       -1073744124
+ebx            0xb7f99000       -1208381440
+esp            0xbffff6cc       0xbffff6cc
+ebp            0xbffff6d8       0xbffff6d8
+esi            0x0      0
+edi            0x0      0
+eip            0x8061546        0x8061546 <main+6>
+eflags         0x246    [ PF ZF IF ]
+cs             0x73     115
+ss             0x7b     123
+ds             0x7b     123
+es             0x7b     123
+fs             0x0      0
+gs             0x33     51
+st0            0        (raw 0x00000000000000000000)
+st1            0        (raw 0x00000000000000000000)
+st2            0        (raw 0x00000000000000000000)
+st3            0        (raw 0x00000000000000000000)
+st4            0        (raw 0x00000000000000000000)
+st5            0        (raw 0x00000000000000000000)
+st6            0        (raw 0x00000000000000000000)
+st7            0        (raw 0x00000000000000000000)
+fctrl          0x37f    895
+fstat          0x0      0
+ftag           0xffff   65535
+fiseg          0x0      0
+fioff          0x0      0
+foseg          0x0      0
+fooff          0x0      0
+fop            0x0      0
+mxcsr          0x1f80   [ IM DM ZM OM UM PM ]
+ymm0           {v8_float = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, v4_double = {0x0, 0x0, 0x0, 0x0},
+  v32_int8 = {0x0 <repeats 32 times>}, v16_int16 = {0x0 <repeats 16 times>}, v8_int32 = {0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0}, v4_int64 = {0x0, 0x0, 0x0, 0x0}, v2_int128 = {0x00000000000000000000000000000000,
+    0x00000000000000000000000000000000}}
+ymm1           {v8_float = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, v4_double = {0x0, 0x0, 0x0, 0x0},
+  v32_int8 = {0x0 <repeats 32 times>}, v16_int16 = {0x0 <repeats 16 times>}, v8_int32 = {0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0}, v4_int64 = {0x0, 0x0, 0x0, 0x0}, v2_int128 = {0x00000000000000000000000000000000,
+    0x00000000000000000000000000000000}}
+ymm2           {v8_float = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, v4_double = {0x0, 0x0, 0x0, 0x0},
+  v32_int8 = {0x0 <repeats 32 times>}, v16_int16 = {0x0 <repeats 16 times>}, v8_int32 = {0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0}, v4_int64 = {0x0, 0x0, 0x0, 0x0}, v2_int128 = {0x00000000000000000000000000000000,
+    0x00000000000000000000000000000000}}
+ymm3           {v8_float = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, v4_double = {0x0, 0x0, 0x0, 0x0},
+  v32_int8 = {0x0 <repeats 32 times>}, v16_int16 = {0x0 <repeats 16 times>}, v8_int32 = {0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0}, v4_int64 = {0x0, 0x0, 0x0, 0x0}, v2_int128 = {0x00000000000000000000000000000000,
+    0x00000000000000000000000000000000}}
+ymm4           {v8_float = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, v4_double = {0x0, 0x0, 0x0, 0x0},
+  v32_int8 = {0x0 <repeats 32 times>}, v16_int16 = {0x0 <repeats 16 times>}, v8_int32 = {0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0}, v4_int64 = {0x0, 0x0, 0x0, 0x0}, v2_int128 = {0x00000000000000000000000000000000,
+    0x00000000000000000000000000000000}}
+ymm5           {v8_float = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, v4_double = {0x0, 0x0, 0x0, 0x0},
+  v32_int8 = {0x0 <repeats 32 times>}, v16_int16 = {0x0 <repeats 16 times>}, v8_int32 = {0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0}, v4_int64 = {0x0, 0x0, 0x0, 0x0}, v2_int128 = {0x00000000000000000000000000000000,
+    0x00000000000000000000000000000000}}
+ymm6           {v8_float = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, v4_double = {0x0, 0x0, 0x0, 0x0},
+  v32_int8 = {0x0 <repeats 32 times>}, v16_int16 = {0x0 <repeats 16 times>}, v8_int32 = {0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0}, v4_int64 = {0x0, 0x0, 0x0, 0x0}, v2_int128 = {0x00000000000000000000000000000000,
+    0x00000000000000000000000000000000}}
+---Type <return> to continue, or q <return> to quit---
+ymm7           {v8_float = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, v4_double = {0x0, 0x0, 0x0, 0x0},
+  v32_int8 = {0x0 <repeats 32 times>}, v16_int16 = {0x0 <repeats 16 times>}, v8_int32 = {0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0}, v4_int64 = {0x0, 0x0, 0x0, 0x0}, v2_int128 = {0x00000000000000000000000000000000,
+    0x00000000000000000000000000000000}}
+mm0            {uint64 = 0x0, v2_int32 = {0x0, 0x0}, v4_int16 = {0x0, 0x0, 0x0, 0x0}, v8_int8 = {0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0}}
+mm1            {uint64 = 0x0, v2_int32 = {0x0, 0x0}, v4_int16 = {0x0, 0x0, 0x0, 0x0}, v8_int8 = {0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0}}
+mm2            {uint64 = 0x0, v2_int32 = {0x0, 0x0}, v4_int16 = {0x0, 0x0, 0x0, 0x0}, v8_int8 = {0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0}}
+mm3            {uint64 = 0x0, v2_int32 = {0x0, 0x0}, v4_int16 = {0x0, 0x0, 0x0, 0x0}, v8_int8 = {0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0}}
+mm4            {uint64 = 0x0, v2_int32 = {0x0, 0x0}, v4_int16 = {0x0, 0x0, 0x0, 0x0}, v8_int8 = {0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0}}
+mm5            {uint64 = 0x0, v2_int32 = {0x0, 0x0}, v4_int16 = {0x0, 0x0, 0x0, 0x0}, v8_int8 = {0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0}}
+mm6            {uint64 = 0x0, v2_int32 = {0x0, 0x0}, v4_int16 = {0x0, 0x0, 0x0, 0x0}, v8_int8 = {0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0}}
+mm7            {uint64 = 0x0, v2_int32 = {0x0, 0x0}, v4_int16 = {0x0, 0x0, 0x0, 0x0}, v8_int8 = {0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0}}
+
+4.) GDB by default shows the disassembly in AT&T format -> Change it to intel
+(gdb) set dis
+disable-randomization  disassembly-flavor     disconnected-tracing
+disassemble-next-line  disconnected-dprintf   displaced-stepping
+(gdb) set disassembly-flavor intel
+(gdb) disassemble main
+Dump of assembler code for function main:
+   0x08061540 <+0>:     push   ebp
+   0x08061541 <+1>:     mov    ebp,esp
+   0x08061543 <+3>:     push   edi
+   0x08061544 <+4>:     push   esi
+   0x08061545 <+5>:     push   ebx
+=> 0x08061546 <+6>:     and    esp,0xfffffff0
+   0x08061549 <+9>:     sub    esp,0x110
+   0x0806154f <+15>:    mov    eax,DWORD PTR [ebp+0xc]
+   0x08061552 <+18>:    mov    DWORD PTR [esp+0x4],0x0
+   0x0806155a <+26>:    mov    DWORD PTR [esp],0x813e4c0
+   0x08061561 <+33>:    mov    DWORD PTR [esp+0x48],eax
+   0x08061565 <+37>:    mov    eax,DWORD PTR [ebp+0x10]
+   0x08061568 <+40>:    mov    DWORD PTR [esp+0x34],eax
+   0x0806156c <+44>:    mov    eax,gs:0x14
+   0x08061572 <+50>:    mov    DWORD PTR [esp+0x10c],eax
+   0x08061579 <+57>:    xor    eax,eax
+   0x0806157b <+59>:    call   0x8060920 <__sigsetjmp@plt>
+   0x08061580 <+64>:    test   eax,eax
+   0x08061582 <+66>:    jne    0x8061b01 <main+1473>
+   0x08061588 <+72>:    call   0x8073870 <xtrace_init>
+   0x0806158d <+77>:    lea    esi,[esi+0x0]
+   0x08061590 <+80>:    call   0x80707b0 <check_dev_tty>
+   0x08061595 <+85>:    cmp    DWORD PTR ds:0x813994c,0x0
+   0x0806159c <+92>:    je     0x80615b6 <main+118>
+   0x0806159e <+94>:    xchg   ax,ax
+   0x080615a0 <+96>:    mov    DWORD PTR [esp],0x3
+   0x080615a7 <+103>:   call   0x8060230 <sleep@plt>
+   0x080615ac <+108>:   mov    edx,DWORD PTR ds:0x813994c
+   0x080615b2 <+114>:   test   edx,edx
+   0x080615b4 <+116>:   jne    0x80615a0 <main+96>
+   0x080615b6 <+118>:   call   0x80b2cd0 <set_default_locale>
+   0x080615bb <+123>:   call   0x8060300 <getuid@plt>
+   0x080615c0 <+128>:   cmp    eax,DWORD PTR ds:0x8135378
+   0x080615c6 <+134>:   mov    ebx,eax
+   0x080615c8 <+136>:   je     0x806164f <main+271>
+   0x080615ce <+142>:   mov    eax,ds:0x8135388
+   0x080615d3 <+147>:   test   eax,eax
+   0x080615d5 <+149>:   je     0x80615ef <main+175>
+   0x080615d7 <+151>:   mov    DWORD PTR [esp+0x8],0x4bb
+   0x080615df <+159>:   mov    DWORD PTR [esp+0x4],0x80fce4c
+   0x080615e7 <+167>:   mov    DWORD PTR [esp],eax
+   0x080615ea <+170>:   call   0x80b9660 <sh_xfree>
+   0x080615ef <+175>:   mov    eax,ds:0x813538c
+   0x080615f4 <+180>:   test   eax,eax
+   0x080615f6 <+182>:   je     0x8061610 <main+208>
+   0x080615f8 <+184>:   mov    DWORD PTR [esp+0x8],0x4bc
+   0x08061600 <+192>:   mov    DWORD PTR [esp+0x4],0x80fce4c
+   0x08061608 <+200>:   mov    DWORD PTR [esp],eax
+   0x0806160b <+203>:   call   0x80b9660 <sh_xfree>
+   0x08061610 <+208>:   mov    eax,ds:0x8135390
+   0x08061615 <+213>:   test   eax,eax
+   0x08061617 <+215>:   je     0x8061631 <main+241>
+   0x08061619 <+217>:   mov    DWORD PTR [esp+0x8],0x4bd
+   0x08061621 <+225>:   mov    DWORD PTR [esp+0x4],0x80fce4c
+   0x08061629 <+233>:   mov    DWORD PTR [esp],eax
+   0x0806162c <+236>:   call   0x80b9660 <sh_xfree>
+   0x08061631 <+241>:   mov    DWORD PTR ds:0x8135390,0x0
+   0x0806163b <+251>:   mov    DWORD PTR ds:0x813538c,0x0
+   0x08061645 <+261>:   mov    DWORD PTR ds:0x8135388,0x0
+   0x0806164f <+271>:   mov    DWORD PTR ds:0x8135378,ebx

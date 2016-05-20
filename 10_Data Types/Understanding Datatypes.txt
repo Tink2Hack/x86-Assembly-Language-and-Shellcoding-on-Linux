@@ -1,0 +1,95 @@
+Understanding Data-types
+
+kan1shka9@dev:~/Desktop/AL/2$ ./compile.sh Datatypes
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/AL/2$ ls
+compile.sh  Datatypes  Datatypes.nasm  Datatypes.o
+kan1shka9@dev:~/Desktop/AL/2$ ./Datatypes
+Hello World!kan1shka9@dev:~/Desktop/AL/2$
+
+kan1shka9@dev:~/Desktop/AL/2$ gdb -q ./Datatypes
+Reading symbols from ./Datatypes...(no debugging symbols found)...done.
+(gdb) info functions
+All defined functions:
+
+Non-debugging symbols:
+0x08048080  _start
+
+--> If you need the entry point of the program use readelf to read the headers of the binary
+(gdb) shell readelf -h Datatypes
+ELF Header:
+  Magic:   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00
+  Class:                             ELF32
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           Intel 80386
+  Version:                           0x1
+  Entry point address:               0x8048080
+  Start of program headers:          52 (bytes into file)
+  Start of section headers:          240 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               52 (bytes)
+  Size of program headers:           32 (bytes)
+  Number of program headers:         2
+  Size of section headers:           40 (bytes)
+  Number of section headers:         7
+  Section header string table index: 4
+(gdb) break _start
+Breakpoint 1 at 0x8048080
+(gdb) set disassembly-flavor intel
+(gdb) run
+Starting program: /home/kan1shka9/Desktop/AL/2/Datatypes
+
+Breakpoint 1, 0x08048080 in _start ()
+(gdb) disassemble
+Dump of assembler code for function _start:
+=> 0x08048080 <+0>:     mov    eax,0x4
+   0x08048085 <+5>:     mov    ebx,0x1
+   0x0804808a <+10>:    mov    ecx,0x80490b8
+   0x0804808f <+15>:    mov    edx,0xc
+   0x08048094 <+20>:    int    0x80
+   0x08048096 <+22>:    mov    eax,0x1
+   0x0804809b <+27>:    mov    ebx,0x5
+   0x080480a0 <+32>:    int    0x80
+End of assembler dump.
+(gdb) info variables
+All defined variables:
+
+Non-debugging symbols:
+0x080490a4  var1
+0x080490a5  var2
+0x080490a8  var3
+0x080490aa  var4
+0x080490ae  var5
+0x080490b2  var6
+0x080490b8  message
+0x080490c4  __bss_start
+0x080490c4  _edata
+0x080490c4  var7
+0x08049128  var8
+0x08049150  _end
+(gdb) x/xb 0x080490a4
+0x80490a4:      0xaa
+(gdb) x/xb &var1
+0x80490a4:      0xaa
+(gdb) x/3xb &var2
+0x80490a5:      0xbb    0xcc    0xdd
+(gdb) x/2xb &var3
+0x80490a8:      0xee    0x00
+(gdb) print &var4
+$1 = (<data variable, no debug info> *) 0x80490aa
+(gdb) x/xb 0x80490aa
+0x80490aa:      0xdd
+(gdb) x/xb 0x80490ab
+0x80490ab:      0xcc
+(gdb) x/xb 0x80490ac
+0x80490ac:      0xbb
+(gdb) x/xb 0x80490ad
+0x80490ad:      0xaa
+(gdb) x/xb &var6
+0x80490b2:      0xff

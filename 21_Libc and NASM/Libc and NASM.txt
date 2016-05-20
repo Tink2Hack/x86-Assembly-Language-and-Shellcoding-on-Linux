@@ -1,0 +1,124 @@
+Libc and NASM
+
+1.) Manual of printf
+man 3 printf
+PRINTF(3)                                   Linux Programmer's Manual                                  PRINTF(3)
+
+NAME
+       printf, fprintf, sprintf, snprintf, vprintf, vfprintf, vsprintf, vsnprintf - formatted output conversion
+
+SYNOPSIS
+       #include <stdio.h>
+
+       int printf(const char *format, ...);
+       int fprintf(FILE *stream, const char *format, ...);
+       int sprintf(char *str, const char *format, ...);
+       int snprintf(char *str, size_t size, const char *format, ...);
+
+2.) Compile, Link and run
+kan1shka9@dev:~/Desktop/AL/13$ ./compile_gcc.sh Libc
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/AL/13$ ls
+compile_gcc.sh  Libc  Libc.nasm  Libc.o
+kan1shka9@dev:~/Desktop/AL/13$ ./Libc
+Hello World!
+
+3.) Single step through the instruction
+kan1shka9@dev:~/Desktop/AL/13$ ./compile_gcc.sh Libc
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/AL/13$ ls
+compile_gcc.sh  Libc  Libc.nasm  Libc.o
+kan1shka9@dev:~/Desktop/AL/13$ ./Libc
+Hello World!
+kan1shka9@dev:~/Desktop/AL/13$
+kan1shka9@dev:~/Desktop/AL/13$ gdb -q ./Libc
+Reading symbols from ./Libc...(no debugging symbols found)...done.
+(gdb) set disassembly-flavor intel
+(gdb) break main
+Breakpoint 1 at 0x8048450
+(gdb) run
+Starting program: /home/kan1shka9/Desktop/AL/13/Libc
+di
+Breakpoint 1, 0x08048450 in main ()
+(gdb) disassemble
+Dump of assembler code for function main:
+=> 0x08048450 <+0>:     push   0x804a024
+   0x08048455 <+5>:     call   0x8048310 <printf@plt>
+   0x0804845a <+10>:    add    esp,0x4
+   0x0804845d <+13>:    mov    eax,0xa
+   0x08048462 <+18>:    call   0x8048330 <exit@plt>
+   0x08048467 <+23>:    xchg   ax,ax
+   0x08048469 <+25>:    xchg   ax,ax
+   0x0804846b <+27>:    xchg   ax,ax
+   0x0804846d <+29>:    xchg   ax,ax
+   0x0804846f <+31>:    nop
+End of assembler dump.
+(gdb) x/xw $esp
+0xbffff69c:     0xb7e2fa83
+(gdb) stepi
+0x08048455 in main ()
+(gdb) x/xw $esp
+0xbffff698:     0x0804a024
+(gdb) x/x $esp
+0xbffff698:     0x0804a024
+(gdb) x/s $esp
+0xbffff698:     "$\240\004\b\203\372\342\267\001"
+(gdb) x/s 0x0804a024
+0x804a024:      "Hello World!\n"
+(gdb) disassemble
+Dump of assembler code for function main:
+   0x08048450 <+0>:     push   0x804a024
+=> 0x08048455 <+5>:     call   0x8048310 <printf@plt>
+   0x0804845a <+10>:    add    esp,0x4
+   0x0804845d <+13>:    mov    eax,0xa
+   0x08048462 <+18>:    call   0x8048330 <exit@plt>
+   0x08048467 <+23>:    xchg   ax,ax
+   0x08048469 <+25>:    xchg   ax,ax
+   0x0804846b <+27>:    xchg   ax,ax
+   0x0804846d <+29>:    xchg   ax,ax
+   0x0804846f <+31>:    nop
+End of assembler dump.
+(gdb) x/xw $esp
+0xbffff698:     0x0804a024
+(gdb) stepi
+0x08048310 in printf@plt ()
+(gdb) disassemble
+Dump of assembler code for function printf@plt:
+=> 0x08048310 <+0>:     jmp    DWORD PTR ds:0x804a00c
+   0x08048316 <+6>:     push   0x0
+   0x0804831b <+11>:    jmp    0x8048300
+End of assembler dump.
+(gdb) break *0x0804845a
+Breakpoint 2 at 0x804845a
+(gdb) c
+Continuing.
+Hello World!
+
+Breakpoint 2, 0x0804845a in main ()
+(gdb) disassemble
+Dump of assembler code for function main:
+   0x08048450 <+0>:     push   0x804a024
+   0x08048455 <+5>:     call   0x8048310 <printf@plt>
+=> 0x0804845a <+10>:    add    esp,0x4
+   0x0804845d <+13>:    mov    eax,0xa
+   0x08048462 <+18>:    call   0x8048330 <exit@plt>
+   0x08048467 <+23>:    xchg   ax,ax
+   0x08048469 <+25>:    xchg   ax,ax
+   0x0804846b <+27>:    xchg   ax,ax
+   0x0804846d <+29>:    xchg   ax,ax
+   0x0804846f <+31>:    nop
+End of assembler dump.
+(gdb) x/xw $esp
+0xbffff698:     0x0804a024
+(gdb) stepi
+0x0804845d in main ()
+(gdb) x/xw $esp
+0xbffff69c:     0xb7e2fa83
+(gdb) c
+Continuing.
+[Inferior 1 (process 12947) exited with code 0203]
+(gdb)

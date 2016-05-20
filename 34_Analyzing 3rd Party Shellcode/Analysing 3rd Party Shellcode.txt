@@ -1,0 +1,224 @@
+Analysing 3rd Party Shellcode
+
+http://shell-storm.org/shellcode/files/shellcode-824.php
+
+1.) Assemble and run
+kan1shka9@dev:~/Desktop/Remain/34$ ./compile_ld.sh execve-stack-ls
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/34$ ls
+compile_ld.sh  execve-stack-ls  execve-stack-ls.nasm  execve-stack-ls.o
+kan1shka9@dev:~/Desktop/Remain/34$ objdump -d ./execve-stack-ls|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-7 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\x50\x68\x2f\x2f\x6c\x73\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80"
+kan1shka9@dev:~/Desktop/Remain/34$ cat -n shellcode.c
+     1  #include<stdio.h>
+     2  #include<string.h>
+     3
+     4  unsigned char code[] = \
+     5  "\x31\xc0\x50\x68\x2f\x2f\x6c\x73\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80";
+     6
+     7  main()
+     8  {
+     9
+    10      printf("Shellcode length: %d\n", strlen(code));
+    11
+    12      int (*ret)() = (int(*)())code;
+    13
+    14      ret();
+    15
+    16  }
+kan1shka9@dev:~/Desktop/Remain/34$ gcc -fno-stack-protector -z execstack shellcode.c -o shellcode
+kan1shka9@dev:~/Desktop/Remain/34$ ls
+compile_ld.sh  execve-stack-ls  execve-stack-ls.nasm  execve-stack-ls.o  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/34$ ./shellcode
+Shellcode length: 25
+compile_ld.sh  execve-stack-ls  execve-stack-ls.nasm  execve-stack-ls.o  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/34$ cat -n shellcode-staged.c
+     1  #include<stdio.h>
+     2  #include<string.h>
+     3
+     4  unsigned char code[] = \
+     5
+     6                  "\x6A\x7F"              //      push    byte    +0x7F
+     7                  "\x5A"                  //      pop             edx
+     8                  "\x54"                  //      push    esp
+     9                  "\x59"                  //      pop             esp
+    10                  "\x31\xDB"              //      xor             ebx,ebx
+    11                  "\x6A\x03"              //      push    byte    +0x3
+    12                  "\x58"                  //      pop             eax
+    13                  "\xCD\x80"              //      int             0x80
+    14                  "\x51"                  //      push    ecx
+    15                  "\xC3";                 //      ret
+    16
+    17  main()
+    18  {
+    19
+    20      printf("Shellcode length: %d\n", strlen(code));
+    21
+    22      int (*ret)() = (int(*)())code;
+    23
+    24      ret();
+    25
+    26  }
+kan1shka9@dev:~/Desktop/Remain/34$ gcc -fno-stack-protector -z execstack shellcode-staged.c -o shellcode-staged
+kan1shka9@dev:~/Desktop/Remain/34$ echo -ne "\x31\xc0\x50\x68\x2f\x2f\x6c\x73\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80" | ./shellcode-staged
+Shellcode length: 14
+compile_ld.sh  execve-stack-ls  execve-stack-ls.nasm  execve-stack-ls.o  shellcode  shellcode-staged  shellcode-staged.c  shellcode.c
+
+2.) Disassemble using ndisasm
+kan1shka9@dev:~/Desktop/Remain/34$ echo -ne "\x31\xc0\x50\x68\x2f\x2f\x6c\x73\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80" | ndisasm -u -
+00000000  31C0              xor eax,eax
+00000002  50                push eax
+00000003  682F2F6C73        push dword 0x736c2f2f
+00000008  682F62696E        push dword 0x6e69622f
+0000000D  89E3              mov ebx,esp
+0000000F  50                push eax
+00000010  89E2              mov edx,esp
+00000012  53                push ebx
+00000013  89E1              mov ecx,esp
+00000015  B00B              mov al,0xb
+00000017  CD80              int 0x80
+kan1shka9@dev:~/Desktop/Remain/34$ echo -ne "\x6A\x7F\x5A\x54\x59\x31\xDB\x6A\x03\x58\xCD\x80\x51\xC3" | ndisasm -u -
+00000000  6A7F              push byte +0x7f
+00000002  5A                pop edx
+00000003  54                push esp
+00000004  59                pop ecx
+00000005  31DB              xor ebx,ebx
+00000007  6A03              push byte +0x3
+00000009  58                pop eax
+0000000A  CD80              int 0x80
+0000000C  51                push ecx
+0000000D  C3                ret
+
+3.) Analyse using GDB
+kan1shka9@dev:~/Desktop/Remain/34$ gdb ./shellcode-staged -q
+Reading symbols from ./shellcode-staged...(no debugging symbols found)...done.
+(gdb) break *&code
+Breakpoint 1 at 0x804a024
+(gdb) set disassembly-flavor intel
+(gdb) run
+Starting program: /home/kan1shka9/Desktop/Remain/34/shellcode-staged
+dShellcode length: 14
+
+Breakpoint 1, 0x0804a024 in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+=> 0x0804a024 <+0>:     push   0x7f
+   0x0804a026 <+2>:     pop    edx
+   0x0804a027 <+3>:     push   esp
+   0x0804a028 <+4>:     pop    ecx
+   0x0804a029 <+5>:     xor    ebx,ebx
+   0x0804a02b <+7>:     push   0x3
+   0x0804a02d <+9>:     pop    eax
+   0x0804a02e <+10>:    int    0x80
+   0x0804a030 <+12>:    push   ecx
+   0x0804a031 <+13>:    ret
+   0x0804a032 <+14>:    add    BYTE PTR [eax],al
+End of assembler dump.
+(gdb) break *0x0804a02e
+Breakpoint 2 at 0x804a02e
+(gdb) c
+Continuing.
+
+Breakpoint 2, 0x0804a02e in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+   0x0804a024 <+0>:     push   0x7f
+   0x0804a026 <+2>:     pop    edx
+   0x0804a027 <+3>:     push   esp
+   0x0804a028 <+4>:     pop    ecx
+   0x0804a029 <+5>:     xor    ebx,ebx
+   0x0804a02b <+7>:     push   0x3
+   0x0804a02d <+9>:     pop    eax
+=> 0x0804a02e <+10>:    int    0x80
+   0x0804a030 <+12>:    push   ecx
+   0x0804a031 <+13>:    ret
+   0x0804a032 <+14>:    add    BYTE PTR [eax],al
+End of assembler dump.
+(gdb) print /x $eax
+$1 = 0x3
+
+Identify syscall number
+kan1shka9@dev:~$ cat /usr/include/i386-linux-gnu/asm/unistd_32.h | grep read
+#define __NR_read 3
+#define __NR_readlink 85
+#define __NR_readdir 89
+#define __NR_readv 145
+#define __NR_pread64 180
+#define __NR_readahead 225
+#define __NR_set_thread_area 243
+#define __NR_get_thread_area 244
+#define __NR_readlinkat 305
+#define __NR_preadv 333
+#define __NR_process_vm_readv 347
+kan1shka9@dev:~$ man 2 read
+READ(2)                                     Linux Programmer's Manual                                    READ(2)
+
+NAME
+       read - read from a file descriptor
+
+SYNOPSIS
+       #include <unistd.h>
+
+       ssize_t read(int fd, void *buf, size_t count);
+	   
+(gdb) print /x $ebx
+$2 = 0x0
+(gdb) print /x $ecx
+$3 = 0xbffff64c
+(gdb) print /x $edx
+$4 = 0x7f
+(gdb) print $edx
+$5 = 127
+(gdb) print /x $esp
+$6 = 0xbffff64c
+(gdb) stepi
+abcdefghijkl
+0x0804a030 in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+   0x0804a024 <+0>:     push   0x7f
+   0x0804a026 <+2>:     pop    edx
+   0x0804a027 <+3>:     push   esp
+   0x0804a028 <+4>:     pop    ecx
+   0x0804a029 <+5>:     xor    ebx,ebx
+   0x0804a02b <+7>:     push   0x3
+   0x0804a02d <+9>:     pop    eax
+   0x0804a02e <+10>:    int    0x80
+=> 0x0804a030 <+12>:    push   ecx
+   0x0804a031 <+13>:    ret
+   0x0804a032 <+14>:    add    BYTE PTR [eax],al
+End of assembler dump.
+(gdb) print /x $ecx
+$7 = 0xbffff64c
+(gdb) x/10cb $ecx
+0xbffff64c:     97 'a'  98 'b'  99 'c'  100 'd' 101 'e' 102 'f' 103 'g' 104 'h'
+0xbffff654:     105 'i' 106 'j'
+(gdb) disassemble
+Dump of assembler code for function code:
+   0x0804a024 <+0>:     push   0x7f
+   0x0804a026 <+2>:     pop    edx
+   0x0804a027 <+3>:     push   esp
+   0x0804a028 <+4>:     pop    ecx
+   0x0804a029 <+5>:     xor    ebx,ebx
+   0x0804a02b <+7>:     push   0x3
+   0x0804a02d <+9>:     pop    eax
+   0x0804a02e <+10>:    int    0x80
+=> 0x0804a030 <+12>:    push   ecx
+   0x0804a031 <+13>:    ret
+   0x0804a032 <+14>:    add    BYTE PTR [eax],al
+End of assembler dump.
+(gdb) stepi
+0x0804a031 in code ()
+(gdb) x/xw $esp
+0xbffff648:     0xbffff64c
+(gdb) x/10cb $ecx
+0xbffff64c:     97 'a'  98 'b'  99 'c'  100 'd' 101 'e' 102 'f' 103 'g' 104 'h'
+0xbffff654:     105 'i' 106 'j'
+(gdb) c
+Continuing.
+
+Program received signal SIGSEGV, Segmentation fault.
+0xbffff64d in ?? ()
+(gdb)

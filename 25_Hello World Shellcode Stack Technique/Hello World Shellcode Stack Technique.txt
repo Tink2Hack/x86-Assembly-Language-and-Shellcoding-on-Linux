@@ -1,0 +1,361 @@
+Hello World Shellcode Stack Technique
+
+1.) Reverse a string using python
+kan1shka9@dev:~$ python
+Python 2.7.6 (default, Mar 22 2014, 22:59:38)
+[GCC 4.8.2] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>>
+>>> code = 'Hello World\n'
+>>>
+>>> code[::-1]
+'\ndlroW olleH'
+>>>
+>>> len(code[::-1])
+12
+>>>
+>>> code[::-1].encode('hex')
+'0a646c726f57206f6c6c6548'
+>>>
+
+2.) Compile, link and get the shellcode
+kan1shka9@dev:~/Desktop/AL/17$ ls
+compile.sh  HelloWorldShellcode-Stack.nasm
+kan1shka9@dev:~/Desktop/AL/17$ ./compile.sh HelloWorldShellcode-Stack
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/AL/17$ ls
+compile.sh  HelloWorldShellcode-Stack  HelloWorldShellcode-Stack.nasm  HelloWorldShellcode-Stack.o
+kan1shka9@dev:~/Desktop/AL/17$ ./HelloWorldShellcode-Stack
+Hello World
+kan1shka9@dev:~/Desktop/AL/17$ objdump -d HelloWorldShellcode-Stack -M intel
+
+HelloWorldShellcode-Stack:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048060 <_start>:
+ 8048060:       31 c0                   xor    eax,eax
+ 8048062:       b0 04                   mov    al,0x4
+ 8048064:       31 db                   xor    ebx,ebx
+ 8048066:       b3 01                   mov    bl,0x1
+ 8048068:       31 d2                   xor    edx,edx
+ 804806a:       52                      push   edx
+ 804806b:       68 72 6c 64 0a          push   0xa646c72
+ 8048070:       68 6f 20 57 6f          push   0x6f57206f
+ 8048075:       68 48 65 6c 6c          push   0x6c6c6548
+ 804807a:       89 e1                   mov    ecx,esp
+ 804807c:       b2 0c                   mov    dl,0xc
+ 804807e:       cd 80                   int    0x80
+ 8048080:       31 c0                   xor    eax,eax
+ 8048082:       b0 01                   mov    al,0x1
+ 8048084:       31 db                   xor    ebx,ebx
+ 8048086:       cd 80                   int    0x80
+kan1shka9@dev:~/Desktop/AL/17$ objdump -d ./HelloWorldShellcode-Stack|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\xb0\x04\x31\xdb\xb3\x01\x31\xd2\x52\x68\x72\x6c\x64\x0a\x68\x6f\x20\x57\x6f\x68\x48\x65\x6c\x6c\x89\xe1\xb2\x0c\xcd\x80\x31\xc0\xb0\x01\x31\xdb\xcd\x80"
+
+3.) Prepare the shellcode_stack.c and compile it
+kan1shka9@dev:~/Desktop/AL/17$ ls
+compile.sh  HelloWorldShellcode-Stack  HelloWorldShellcode-Stack.nasm  HelloWorldShellcode-Stack.o  shellcode_stack.c
+kan1shka9@dev:~/Desktop/AL/17$ gcc -fno-stack-protector -z execstack shellcode_stack.c -o shellcode_stack
+kan1shka9@dev:~/Desktop/AL/17$ ls
+compile.sh  HelloWorldShellcode-Stack  HelloWorldShellcode-Stack.nasm  HelloWorldShellcode-Stack.o  shellcode_stack  shellcode_stack.c
+kan1shka9@dev:~/Desktop/AL/17$ ./shellcode_stack
+Shellcode length: 40
+Hello World
+
+4.) Single step using GDB
+kan1shka9@dev:~/Desktop/AL/17$ gdb -q ./shellcode_stack
+Reading symbols from ./shellcode_stack...(no debugging symbols found)...done.
+(gdb) set disassembly-flavor intel
+(gdb) print /x &code
+$1 = 0x804a040
+(gdb) break *0x804a040
+Breakpoint 1 at 0x804a040
+(gdb) run
+Starting program: /home/kan1shka9/Desktop/AL/17/shellcode_stack
+Shellcode length: 40
+
+Breakpoint 1, 0x0804a040 in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+=> 0x0804a040 <+0>:     xor    eax,eax
+   0x0804a042 <+2>:     mov    al,0x4
+   0x0804a044 <+4>:     xor    ebx,ebx
+   0x0804a046 <+6>:     mov    bl,0x1
+   0x0804a048 <+8>:     xor    edx,edx
+   0x0804a04a <+10>:    push   edx
+   0x0804a04b <+11>:    push   0xa646c72
+   0x0804a050 <+16>:    push   0x6f57206f
+   0x0804a055 <+21>:    push   0x6c6c6548
+   0x0804a05a <+26>:    mov    ecx,esp
+   0x0804a05c <+28>:    mov    dl,0xc
+   0x0804a05e <+30>:    int    0x80
+   0x0804a060 <+32>:    xor    eax,eax
+   0x0804a062 <+34>:    mov    al,0x1
+   0x0804a064 <+36>:    xor    ebx,ebx
+   0x0804a066 <+38>:    int    0x80
+   0x0804a068 <+40>:    add    BYTE PTR [eax],al
+End of assembler dump.
+(gdb) x/20cb $esp
+0xbffff65c:     -128 '\200'     -124 '\204'     4 '\004'        8 '\b'  32 ' '  -123 '\205'     4 '\004'        8 '\b'
+0xbffff664:     40 '('  0 '\000'        0 '\000'        0 '\000'        44 ','  -9 '\367'       -1 '\377'       -65 '\277'
+0xbffff66c:     45 '-'  -108 '\224'     -28 '\344'      -73 '\267'
+(gdb) define hook-stop
+Type commands for definition of "hook-stop".
+End with a line saying just "end".
+>disassemble
+>x/20cb $esp
+>end
+(gdb) stepi
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     xor    eax,eax
+=> 0x0804a042 <+2>:     mov    al,0x4
+   0x0804a044 <+4>:     xor    ebx,ebx
+   0x0804a046 <+6>:     mov    bl,0x1
+   0x0804a048 <+8>:     xor    edx,edx
+   0x0804a04a <+10>:    push   edx
+   0x0804a04b <+11>:    push   0xa646c72
+   0x0804a050 <+16>:    push   0x6f57206f
+   0x0804a055 <+21>:    push   0x6c6c6548
+   0x0804a05a <+26>:    mov    ecx,esp
+   0x0804a05c <+28>:    mov    dl,0xc
+   0x0804a05e <+30>:    int    0x80
+   0x0804a060 <+32>:    xor    eax,eax
+   0x0804a062 <+34>:    mov    al,0x1
+   0x0804a064 <+36>:    xor    ebx,ebx
+   0x0804a066 <+38>:    int    0x80
+   0x0804a068 <+40>:    add    BYTE PTR [eax],al
+End of assembler dump.
+0xbffff65c:     -128 '\200'     -124 '\204'     4 '\004'        8 '\b'  32 ' '  -123 '\205'     4 '\004'        8 '\b'
+0xbffff664:     40 '('  0 '\000'        0 '\000'        0 '\000'        44 ','  -9 '\367'       -1 '\377'       -65 '\277'
+0xbffff66c:     45 '-'  -108 '\224'     -28 '\344'      -73 '\267'
+0x0804a042 in code ()
+(gdb) stepi
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     xor    eax,eax
+   0x0804a042 <+2>:     mov    al,0x4
+=> 0x0804a044 <+4>:     xor    ebx,ebx
+   0x0804a046 <+6>:     mov    bl,0x1
+   0x0804a048 <+8>:     xor    edx,edx
+   0x0804a04a <+10>:    push   edx
+   0x0804a04b <+11>:    push   0xa646c72
+   0x0804a050 <+16>:    push   0x6f57206f
+   0x0804a055 <+21>:    push   0x6c6c6548
+   0x0804a05a <+26>:    mov    ecx,esp
+   0x0804a05c <+28>:    mov    dl,0xc
+   0x0804a05e <+30>:    int    0x80
+   0x0804a060 <+32>:    xor    eax,eax
+   0x0804a062 <+34>:    mov    al,0x1
+   0x0804a064 <+36>:    xor    ebx,ebx
+   0x0804a066 <+38>:    int    0x80
+   0x0804a068 <+40>:    add    BYTE PTR [eax],al
+End of assembler dump.
+0xbffff65c:     -128 '\200'     -124 '\204'     4 '\004'        8 '\b'  32 ' '  -123 '\205'     4 '\004'        8 '\b'
+0xbffff664:     40 '('  0 '\000'        0 '\000'        0 '\000'        44 ','  -9 '\367'       -1 '\377'       -65 '\277'
+0xbffff66c:     45 '-'  -108 '\224'     -28 '\344'      -73 '\267'
+0x0804a044 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     xor    eax,eax
+   0x0804a042 <+2>:     mov    al,0x4
+   0x0804a044 <+4>:     xor    ebx,ebx
+=> 0x0804a046 <+6>:     mov    bl,0x1
+   0x0804a048 <+8>:     xor    edx,edx
+   0x0804a04a <+10>:    push   edx
+   0x0804a04b <+11>:    push   0xa646c72
+   0x0804a050 <+16>:    push   0x6f57206f
+   0x0804a055 <+21>:    push   0x6c6c6548
+   0x0804a05a <+26>:    mov    ecx,esp
+   0x0804a05c <+28>:    mov    dl,0xc
+   0x0804a05e <+30>:    int    0x80
+   0x0804a060 <+32>:    xor    eax,eax
+   0x0804a062 <+34>:    mov    al,0x1
+   0x0804a064 <+36>:    xor    ebx,ebx
+   0x0804a066 <+38>:    int    0x80
+   0x0804a068 <+40>:    add    BYTE PTR [eax],al
+End of assembler dump.
+0xbffff65c:     -128 '\200'     -124 '\204'     4 '\004'        8 '\b'  32 ' '  -123 '\205'     4 '\004'        8 '\b'
+0xbffff664:     40 '('  0 '\000'        0 '\000'        0 '\000'        44 ','  -9 '\367'       -1 '\377'       -65 '\277'
+0xbffff66c:     45 '-'  -108 '\224'     -28 '\344'      -73 '\267'
+0x0804a046 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     xor    eax,eax
+   0x0804a042 <+2>:     mov    al,0x4
+   0x0804a044 <+4>:     xor    ebx,ebx
+   0x0804a046 <+6>:     mov    bl,0x1
+=> 0x0804a048 <+8>:     xor    edx,edx
+   0x0804a04a <+10>:    push   edx
+   0x0804a04b <+11>:    push   0xa646c72
+   0x0804a050 <+16>:    push   0x6f57206f
+   0x0804a055 <+21>:    push   0x6c6c6548
+   0x0804a05a <+26>:    mov    ecx,esp
+   0x0804a05c <+28>:    mov    dl,0xc
+   0x0804a05e <+30>:    int    0x80
+   0x0804a060 <+32>:    xor    eax,eax
+   0x0804a062 <+34>:    mov    al,0x1
+   0x0804a064 <+36>:    xor    ebx,ebx
+   0x0804a066 <+38>:    int    0x80
+   0x0804a068 <+40>:    add    BYTE PTR [eax],al
+End of assembler dump.
+0xbffff65c:     -128 '\200'     -124 '\204'     4 '\004'        8 '\b'  32 ' '  -123 '\205'     4 '\004'        8 '\b'
+0xbffff664:     40 '('  0 '\000'        0 '\000'        0 '\000'        44 ','  -9 '\367'       -1 '\377'       -65 '\277'
+0xbffff66c:     45 '-'  -108 '\224'     -28 '\344'      -73 '\267'
+0x0804a048 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     xor    eax,eax
+   0x0804a042 <+2>:     mov    al,0x4
+   0x0804a044 <+4>:     xor    ebx,ebx
+   0x0804a046 <+6>:     mov    bl,0x1
+   0x0804a048 <+8>:     xor    edx,edx
+=> 0x0804a04a <+10>:    push   edx
+   0x0804a04b <+11>:    push   0xa646c72
+   0x0804a050 <+16>:    push   0x6f57206f
+   0x0804a055 <+21>:    push   0x6c6c6548
+   0x0804a05a <+26>:    mov    ecx,esp
+   0x0804a05c <+28>:    mov    dl,0xc
+   0x0804a05e <+30>:    int    0x80
+   0x0804a060 <+32>:    xor    eax,eax
+   0x0804a062 <+34>:    mov    al,0x1
+   0x0804a064 <+36>:    xor    ebx,ebx
+   0x0804a066 <+38>:    int    0x80
+   0x0804a068 <+40>:    add    BYTE PTR [eax],al
+End of assembler dump.
+0xbffff65c:     -128 '\200'     -124 '\204'     4 '\004'        8 '\b'  32 ' '  -123 '\205'     4 '\004'        8 '\b'
+0xbffff664:     40 '('  0 '\000'        0 '\000'        0 '\000'        44 ','  -9 '\367'       -1 '\377'       -65 '\277'
+0xbffff66c:     45 '-'  -108 '\224'     -28 '\344'      -73 '\267'
+0x0804a04a in code ()
+(gdb) stepi
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     xor    eax,eax
+   0x0804a042 <+2>:     mov    al,0x4
+   0x0804a044 <+4>:     xor    ebx,ebx
+   0x0804a046 <+6>:     mov    bl,0x1
+   0x0804a048 <+8>:     xor    edx,edx
+   0x0804a04a <+10>:    push   edx
+=> 0x0804a04b <+11>:    push   0xa646c72
+   0x0804a050 <+16>:    push   0x6f57206f
+   0x0804a055 <+21>:    push   0x6c6c6548
+   0x0804a05a <+26>:    mov    ecx,esp
+   0x0804a05c <+28>:    mov    dl,0xc
+   0x0804a05e <+30>:    int    0x80
+   0x0804a060 <+32>:    xor    eax,eax
+   0x0804a062 <+34>:    mov    al,0x1
+   0x0804a064 <+36>:    xor    ebx,ebx
+   0x0804a066 <+38>:    int    0x80
+   0x0804a068 <+40>:    add    BYTE PTR [eax],al
+End of assembler dump.
+0xbffff658:     0 '\000'        0 '\000'        0 '\000'        0 '\000'        -128 '\200'     -124 '\204'     4 '\004'   8 '\b'
+0xbffff660:     32 ' '  -123 '\205'     4 '\004'        8 '\b'  40 '('  0 '\000'        0 '\000'        0 '\000'
+0xbffff668:     44 ','  -9 '\367'       -1 '\377'       -65 '\277'
+0x0804a04b in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     xor    eax,eax
+   0x0804a042 <+2>:     mov    al,0x4
+   0x0804a044 <+4>:     xor    ebx,ebx
+   0x0804a046 <+6>:     mov    bl,0x1
+   0x0804a048 <+8>:     xor    edx,edx
+   0x0804a04a <+10>:    push   edx
+   0x0804a04b <+11>:    push   0xa646c72
+=> 0x0804a050 <+16>:    push   0x6f57206f
+   0x0804a055 <+21>:    push   0x6c6c6548
+   0x0804a05a <+26>:    mov    ecx,esp
+   0x0804a05c <+28>:    mov    dl,0xc
+   0x0804a05e <+30>:    int    0x80
+   0x0804a060 <+32>:    xor    eax,eax
+   0x0804a062 <+34>:    mov    al,0x1
+   0x0804a064 <+36>:    xor    ebx,ebx
+   0x0804a066 <+38>:    int    0x80
+   0x0804a068 <+40>:    add    BYTE PTR [eax],al
+End of assembler dump.
+0xbffff654:     114 'r' 108 'l' 100 'd' 10 '\n' 0 '\000'        0 '\000'        0 '\000'        0 '\000'
+0xbffff65c:     -128 '\200'     -124 '\204'     4 '\004'        8 '\b'  32 ' '  -123 '\205'     4 '\004'        8 '\b'
+0xbffff664:     40 '('  0 '\000'        0 '\000'        0 '\000'
+0x0804a050 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     xor    eax,eax
+   0x0804a042 <+2>:     mov    al,0x4
+   0x0804a044 <+4>:     xor    ebx,ebx
+   0x0804a046 <+6>:     mov    bl,0x1
+   0x0804a048 <+8>:     xor    edx,edx
+   0x0804a04a <+10>:    push   edx
+   0x0804a04b <+11>:    push   0xa646c72
+   0x0804a050 <+16>:    push   0x6f57206f
+=> 0x0804a055 <+21>:    push   0x6c6c6548
+   0x0804a05a <+26>:    mov    ecx,esp
+   0x0804a05c <+28>:    mov    dl,0xc
+   0x0804a05e <+30>:    int    0x80
+   0x0804a060 <+32>:    xor    eax,eax
+   0x0804a062 <+34>:    mov    al,0x1
+   0x0804a064 <+36>:    xor    ebx,ebx
+   0x0804a066 <+38>:    int    0x80
+   0x0804a068 <+40>:    add    BYTE PTR [eax],al
+End of assembler dump.
+0xbffff650:     111 'o' 32 ' '  87 'W'  111 'o' 114 'r' 108 'l' 100 'd' 10 '\n'
+0xbffff658:     0 '\000'        0 '\000'        0 '\000'        0 '\000'        -128 '\200'     -124 '\204'     4 '\004'   8 '\b'
+0xbffff660:     32 ' '  -123 '\205'     4 '\004'        8 '\b'
+0x0804a055 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     xor    eax,eax
+   0x0804a042 <+2>:     mov    al,0x4
+   0x0804a044 <+4>:     xor    ebx,ebx
+   0x0804a046 <+6>:     mov    bl,0x1
+   0x0804a048 <+8>:     xor    edx,edx
+   0x0804a04a <+10>:    push   edx
+   0x0804a04b <+11>:    push   0xa646c72
+   0x0804a050 <+16>:    push   0x6f57206f
+   0x0804a055 <+21>:    push   0x6c6c6548
+=> 0x0804a05a <+26>:    mov    ecx,esp
+   0x0804a05c <+28>:    mov    dl,0xc
+   0x0804a05e <+30>:    int    0x80
+   0x0804a060 <+32>:    xor    eax,eax
+   0x0804a062 <+34>:    mov    al,0x1
+   0x0804a064 <+36>:    xor    ebx,ebx
+   0x0804a066 <+38>:    int    0x80
+   0x0804a068 <+40>:    add    BYTE PTR [eax],al
+End of assembler dump.
+0xbffff64c:     72 'H'  101 'e' 108 'l' 108 'l' 111 'o' 32 ' '  87 'W'  111 'o'
+0xbffff654:     114 'r' 108 'l' 100 'd' 10 '\n' 0 '\000'        0 '\000'        0 '\000'        0 '\000'
+0xbffff65c:     -128 '\200'     -124 '\204'     4 '\004'        8 '\b'
+0x0804a05a in code ()
+(gdb) print /x $ecx
+$2 = 0x0
+(gdb) stepi
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     xor    eax,eax
+   0x0804a042 <+2>:     mov    al,0x4
+   0x0804a044 <+4>:     xor    ebx,ebx
+   0x0804a046 <+6>:     mov    bl,0x1
+   0x0804a048 <+8>:     xor    edx,edx
+   0x0804a04a <+10>:    push   edx
+   0x0804a04b <+11>:    push   0xa646c72
+   0x0804a050 <+16>:    push   0x6f57206f
+   0x0804a055 <+21>:    push   0x6c6c6548
+   0x0804a05a <+26>:    mov    ecx,esp
+=> 0x0804a05c <+28>:    mov    dl,0xc
+   0x0804a05e <+30>:    int    0x80
+   0x0804a060 <+32>:    xor    eax,eax
+   0x0804a062 <+34>:    mov    al,0x1
+   0x0804a064 <+36>:    xor    ebx,ebx
+   0x0804a066 <+38>:    int    0x80
+   0x0804a068 <+40>:    add    BYTE PTR [eax],al
+End of assembler dump.
+0xbffff64c:     72 'H'  101 'e' 108 'l' 108 'l' 111 'o' 32 ' '  87 'W'  111 'o'
+0xbffff654:     114 'r' 108 'l' 100 'd' 10 '\n' 0 '\000'        0 '\000'        0 '\000'        0 '\000'
+0xbffff65c:     -128 '\200'     -124 '\204'     4 '\004'        8 '\b'
+0x0804a05c in code ()
+(gdb) print /x $ecx
+$3 = 0xbffff64c
+(gdb) c
+Continuing.
+Hello World
+[Inferior 1 (process 15367) exited normally]
+Error while running hook_stop:
+No frame selected.

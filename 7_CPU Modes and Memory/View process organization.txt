@@ -1,0 +1,168 @@
+View process organization
+
+1.) Using /proc
+kan1shka9@dev:~$ ps
+  PID TTY          TIME CMD
+ 8979 pts/6    00:00:00 bash
+ 9061 pts/6    00:00:00 ps
+kan1shka9@dev:~$ cat /proc/8979/maps
+08048000-08134000 r-xp 00000000 08:01 262150     /bin/bash
+08134000-08135000 r--p 000eb000 08:01 262150     /bin/bash
+08135000-0813a000 rw-p 000ec000 08:01 262150     /bin/bash
+0813a000-0813f000 rw-p 00000000 00:00 0
+08e92000-09030000 rw-p 00000000 00:00 0          [heap]
+b7311000-b731c000 r-xp 00000000 08:01 1967172    /lib/i386-linux-gnu/libnss_files-2.19.so
+b731c000-b731d000 r--p 0000a000 08:01 1967172    /lib/i386-linux-gnu/libnss_files-2.19.so
+b731d000-b731e000 rw-p 0000b000 08:01 1967172    /lib/i386-linux-gnu/libnss_files-2.19.so
+b731e000-b7328000 r-xp 00000000 08:01 1967182    /lib/i386-linux-gnu/libnss_nis-2.19.so
+b7328000-b7329000 r--p 00009000 08:01 1967182    /lib/i386-linux-gnu/libnss_nis-2.19.so
+b7329000-b732a000 rw-p 0000a000 08:01 1967182    /lib/i386-linux-gnu/libnss_nis-2.19.so
+b732a000-b733f000 r-xp 00000000 08:01 1967166    /lib/i386-linux-gnu/libnsl-2.19.so
+b733f000-b7340000 r--p 00015000 08:01 1967166    /lib/i386-linux-gnu/libnsl-2.19.so
+b7340000-b7341000 rw-p 00016000 08:01 1967166    /lib/i386-linux-gnu/libnsl-2.19.so
+b7341000-b7343000 rw-p 00000000 00:00 0
+b7357000-b7557000 r--p 00000000 08:01 533457     /usr/lib/locale/locale-archive
+b7557000-b7558000 rw-p 00000000 00:00 0
+b7558000-b7701000 r-xp 00000000 08:01 1967097    /lib/i386-linux-gnu/libc-2.19.so
+b7701000-b7703000 r--p 001a9000 08:01 1967097    /lib/i386-linux-gnu/libc-2.19.so
+b7703000-b7704000 rw-p 001ab000 08:01 1967097    /lib/i386-linux-gnu/libc-2.19.so
+b7704000-b7708000 rw-p 00000000 00:00 0
+b7708000-b770b000 r-xp 00000000 08:01 1967114    /lib/i386-linux-gnu/libdl-2.19.so
+b770b000-b770c000 r--p 00002000 08:01 1967114    /lib/i386-linux-gnu/libdl-2.19.so
+b770c000-b770d000 rw-p 00003000 08:01 1967114    /lib/i386-linux-gnu/libdl-2.19.so
+b770d000-b772b000 r-xp 00000000 08:01 1967243    /lib/i386-linux-gnu/libtinfo.so.5.9
+b772b000-b772c000 ---p 0001e000 08:01 1967243    /lib/i386-linux-gnu/libtinfo.so.5.9
+b772c000-b772e000 r--p 0001e000 08:01 1967243    /lib/i386-linux-gnu/libtinfo.so.5.9
+b772e000-b772f000 rw-p 00020000 08:01 1967243    /lib/i386-linux-gnu/libtinfo.so.5.9
+b7732000-b7739000 r--s 00000000 08:01 531446     /usr/lib/i386-linux-gnu/gconv/gconv-modules.cache
+b7739000-b7740000 r-xp 00000000 08:01 1967168    /lib/i386-linux-gnu/libnss_compat-2.19.so
+b7740000-b7741000 r--p 00006000 08:01 1967168    /lib/i386-linux-gnu/libnss_compat-2.19.so
+b7741000-b7742000 rw-p 00007000 08:01 1967168    /lib/i386-linux-gnu/libnss_compat-2.19.so
+b7742000-b7743000 r--p 00850000 08:01 533457     /usr/lib/locale/locale-archive
+b7743000-b7745000 rw-p 00000000 00:00 0
+b7745000-b7746000 r-xp 00000000 00:00 0          [vdso]
+b7746000-b7748000 r--p 00000000 00:00 0          [vvar]
+b7748000-b7768000 r-xp 00000000 08:01 1967073    /lib/i386-linux-gnu/ld-2.19.so
+b7768000-b7769000 r--p 0001f000 08:01 1967073    /lib/i386-linux-gnu/ld-2.19.so
+b7769000-b776a000 rw-p 00020000 08:01 1967073    /lib/i386-linux-gnu/ld-2.19.so
+bfde8000-bfe09000 rw-p 00000000 00:00 0          [stack]
+
+2.) Attach and view using GDB
+kan1shka9@dev:~$ gdb -q /bin/bash
+Reading symbols from /bin/bash...(no debugging symbols found)...done.
+(gdb) info proc mappings
+No current process: you must name one.
+(gdb) break main
+Breakpoint 1 at 0x8061546
+(gdb) run
+Starting program: /bin/bash
+
+Breakpoint 1, 0x08061546 in main ()
+(gdb) info proc mappings
+process 9113
+Mapped address spaces:
+
+        Start Addr   End Addr       Size     Offset objfile
+         0x8048000  0x8134000    0xec000        0x0 /bin/bash
+         0x8134000  0x8135000     0x1000    0xeb000 /bin/bash
+         0x8135000  0x813a000     0x5000    0xec000 /bin/bash
+         0x813a000  0x813f000     0x5000        0x0 [heap]
+        0xb7ded000 0xb7dee000     0x1000        0x0
+        0xb7dee000 0xb7f97000   0x1a9000        0x0 /lib/i386-linux-gnu/libc-2.19.so
+        0xb7f97000 0xb7f99000     0x2000   0x1a9000 /lib/i386-linux-gnu/libc-2.19.so
+        0xb7f99000 0xb7f9a000     0x1000   0x1ab000 /lib/i386-linux-gnu/libc-2.19.so
+        0xb7f9a000 0xb7f9e000     0x4000        0x0
+        0xb7f9e000 0xb7fa1000     0x3000        0x0 /lib/i386-linux-gnu/libdl-2.19.so
+        0xb7fa1000 0xb7fa2000     0x1000     0x2000 /lib/i386-linux-gnu/libdl-2.19.so
+        0xb7fa2000 0xb7fa3000     0x1000     0x3000 /lib/i386-linux-gnu/libdl-2.19.so
+        0xb7fa3000 0xb7fc1000    0x1e000        0x0 /lib/i386-linux-gnu/libtinfo.so.5.9
+        0xb7fc1000 0xb7fc2000     0x1000    0x1e000 /lib/i386-linux-gnu/libtinfo.so.5.9
+        0xb7fc2000 0xb7fc4000     0x2000    0x1e000 /lib/i386-linux-gnu/libtinfo.so.5.9
+        0xb7fc4000 0xb7fc5000     0x1000    0x20000 /lib/i386-linux-gnu/libtinfo.so.5.9
+        0xb7fd9000 0xb7fdb000     0x2000        0x0
+        0xb7fdb000 0xb7fdc000     0x1000        0x0 [vdso]
+        0xb7fdc000 0xb7fde000     0x2000        0x0 [vvar]
+        0xb7fde000 0xb7ffe000    0x20000        0x0 /lib/i386-linux-gnu/ld-2.19.so
+        0xb7ffe000 0xb7fff000     0x1000    0x1f000 /lib/i386-linux-gnu/ld-2.19.so
+        0xb7fff000 0xb8000000     0x1000    0x20000 /lib/i386-linux-gnu/ld-2.19.so
+        0xbffdf000 0xc0000000    0x21000        0x0 [stack]
+(gdb) quit
+A debugging session is active.
+
+        Inferior 1 [process 9113] will be killed.
+
+Quit anyway? (y or n) y
+
+3.) pmap
+kan1shka9@dev:~$ pmap
+
+Usage:
+ pmap [options] pid [pid ...]
+
+Options:
+ -x, --extended              show details
+ -X                          show even more details
+            WARNING: format changes according to /proc/PID/smaps
+ -XX                         show everything the kernel provides
+ -c, --read-rc               read the default rc
+ -C, --read-rc-from=<file>   read the rc from file
+ -n, --create-rc             create new default rc
+ -N, --create-rc-to=<file>   create new rc to file
+            NOTE: pid arguments are not allowed with -n, -N
+ -d, --device                show the device format
+ -q, --quiet                 do not display header and footer
+ -p, --show-path             show path in the mapping
+ -A, --range=<low>[,<high>]  limit results to the given range
+
+ -h, --help     display this help and exit
+ -V, --version  output version information and exit
+
+For more details see pmap(1).
+kan1shka9@dev:~$ ps
+  PID TTY          TIME CMD
+ 8979 pts/6    00:00:00 bash
+ 9121 pts/6    00:00:00 ps
+kan1shka9@dev:~$ pmap -d 8979
+8979:   -bash
+Address   Kbytes Mode  Offset           Device    Mapping
+08048000     944 r-x-- 0000000000000000 008:00001 bash
+08134000       4 r---- 00000000000eb000 008:00001 bash
+08135000      20 rw--- 00000000000ec000 008:00001 bash
+0813a000      20 rw--- 0000000000000000 000:00000   [ anon ]
+08e92000    1656 rw--- 0000000000000000 000:00000   [ anon ]
+b7311000      44 r-x-- 0000000000000000 008:00001 libnss_files-2.19.so
+b731c000       4 r---- 000000000000a000 008:00001 libnss_files-2.19.so
+b731d000       4 rw--- 000000000000b000 008:00001 libnss_files-2.19.so
+b731e000      40 r-x-- 0000000000000000 008:00001 libnss_nis-2.19.so
+b7328000       4 r---- 0000000000009000 008:00001 libnss_nis-2.19.so
+b7329000       4 rw--- 000000000000a000 008:00001 libnss_nis-2.19.so
+b732a000      84 r-x-- 0000000000000000 008:00001 libnsl-2.19.so
+b733f000       4 r---- 0000000000015000 008:00001 libnsl-2.19.so
+b7340000       4 rw--- 0000000000016000 008:00001 libnsl-2.19.so
+b7341000       8 rw--- 0000000000000000 000:00000   [ anon ]
+b7357000    2048 r---- 0000000000000000 008:00001 locale-archive
+b7557000       4 rw--- 0000000000000000 000:00000   [ anon ]
+b7558000    1700 r-x-- 0000000000000000 008:00001 libc-2.19.so
+b7701000       8 r---- 00000000001a9000 008:00001 libc-2.19.so
+b7703000       4 rw--- 00000000001ab000 008:00001 libc-2.19.so
+b7704000      16 rw--- 0000000000000000 000:00000   [ anon ]
+b7708000      12 r-x-- 0000000000000000 008:00001 libdl-2.19.so
+b770b000       4 r---- 0000000000002000 008:00001 libdl-2.19.so
+b770c000       4 rw--- 0000000000003000 008:00001 libdl-2.19.so
+b770d000     120 r-x-- 0000000000000000 008:00001 libtinfo.so.5.9
+b772b000       4 ----- 000000000001e000 008:00001 libtinfo.so.5.9
+b772c000       8 r---- 000000000001e000 008:00001 libtinfo.so.5.9
+b772e000       4 rw--- 0000000000020000 008:00001 libtinfo.so.5.9
+b7732000      28 r--s- 0000000000000000 008:00001 gconv-modules.cache
+b7739000      28 r-x-- 0000000000000000 008:00001 libnss_compat-2.19.so
+b7740000       4 r---- 0000000000006000 008:00001 libnss_compat-2.19.so
+b7741000       4 rw--- 0000000000007000 008:00001 libnss_compat-2.19.so
+b7742000       4 r---- 0000000000850000 008:00001 locale-archive
+b7743000       8 rw--- 0000000000000000 000:00000   [ anon ]
+b7745000       4 r-x-- 0000000000000000 000:00000   [ anon ]
+b7746000       8 r---- 0000000000000000 000:00000   [ anon ]
+b7748000     128 r-x-- 0000000000000000 008:00001 ld-2.19.so
+b7768000       4 r---- 000000000001f000 008:00001 ld-2.19.so
+b7769000       4 rw--- 0000000000020000 008:00001 ld-2.19.so
+bfde8000     132 rw--- 0000000000000000 000:00000   [ stack ]
+mapped: 7136K    writeable/private: 1896K    shared: 28K

